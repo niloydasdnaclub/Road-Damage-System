@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Officer Management - CivicReport</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f3f6fa;
+        }
+
+        header {
+            background: #123c69;
+            color: white;
+            padding: 18px 30px;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h2 {
+            margin: 0;
+        }
+
+        .back {
+            background: white;
+            color: #123c69;
+            padding: 9px 15px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 25px;
+        }
+
+        .box {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+
+            box-shadow:
+                0 3px 12px rgba(0,0,0,0.08);
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        .full {
+            grid-column: 1 / -1;
+        }
+
+        button {
+            background: #198754;
+            color: white;
+            border: none;
+            padding: 11px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        button:hover {
+            background: #146c43;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        th {
+            background: #123c69;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .dashboard {
+            background: #123c69;
+            color: white;
+            text-decoration: none;
+            padding: 7px 10px;
+            border-radius: 5px;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+
+        .delete {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 7px 10px;
+            border-radius: 5px;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 30px;
+            color: #777;
+        }
+
+        @media(max-width: 700px) {
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .full {
+                grid-column: auto;
+            }
+
+            .container {
+                padding: 15px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<header>
+
+    <h2>
+        👮 Officer Management
+    </h2>
+
+    <a
+        href="{{ url_for('admin_dashboard') }}"
+        class="back">
+
+        ← Admin Dashboard
+
+    </a>
+
+</header>
+
+
+<div class="container">
+
+
+    <!-- ADD OFFICER -->
+
+    <div class="box">
+
+        <h2>
+            ➕ Add New Officer
+        </h2>
+
+        <form
+            method="POST"
+            action="{{ url_for('add_officer') }}">
+
+            <div class="form-grid">
+
+
+                <div>
+
+                    <label>
+                        Officer Name
+                    </label>
+
+                    <input
+                        type="text"
+                        name="name"
+                        placeholder="Enter officer name"
+                        required>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        Mobile Number
+                    </label>
+
+                    <input
+                        type="text"
+                        name="mobile"
+                        placeholder="Enter mobile number">
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        Department
+                    </label>
+
+                    <select
+                        name="department"
+                        required>
+
+                        <option value="">
+                            Select Department
+                        </option>
+
+                        <option value="Roads & Engineering">
+                            Roads & Engineering
+                        </option>
+
+                        <option value="Electrical">
+                            Electrical
+                        </option>
+
+                        <option value="Drainage">
+                            Drainage
+                        </option>
+
+                        <option value="Water Supply">
+                            Water Supply
+                        </option>
+
+                        <option value="Sanitation">
+                            Sanitation
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        Branch
+                    </label>
+
+                    <select
+                        name="branch"
+                        required>
+
+                        <option value="">
+                            Select Branch
+                        </option>
+
+                        <option value="Central Branch">
+                            Central Branch
+                        </option>
+
+                        <option value="North Branch">
+                            North Branch
+                        </option>
+
+                        <option value="South Branch">
+                            South Branch
+                        </option>
+
+                        <option value="East Branch">
+                            East Branch
+                        </option>
+
+                        <option value="West Branch">
+                            West Branch
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="full">
+
+                    <button type="submit">
+
+                        ➕ Add Officer
+
+                    </button>
+
+                </div>
+
+
+            </div>
+
+        </form>
+
+    </div>
+
+
+    <!-- OFFICER LIST -->
+
+    <div class="box">
+
+        <h2>
+            👮 Registered Officers
+        </h2>
+
+
+        {% if officers %}
+
+
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            ID
+                        </th>
+
+                        <th>
+                            Name
+                        </th>
+
+                        <th>
+                            Department
+                        </th>
+
+                        <th>
+                            Branch
+                        </th>
+
+                        <th>
+                            Mobile
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                        <th>
+                            Action
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+
+                {% for officer in officers %}
+
+                <tr>
+
+                    <td>
+                        {{ officer["id"] }}
+                    </td>
+
+                    <td>
+                        <strong>
+                            {{ officer["name"] }}
+                        </strong>
+                    </td>
+
+                    <td>
+                        {{ officer["department"] }}
+                    </td>
+
+                    <td>
+                        {{ officer["branch"] }}
+                    </td>
+
+                    <td>
+                        {{ officer["mobile"] or "-" }}
+                    </td>
+
+                    <td>
+                        {{ officer["status"] }}
+                    </td>
+
+                    <td>
+
+                        <a
+                            class="dashboard"
+                            href="{{ url_for(
+                                'officer_dashboard',
+                                officer_id=officer['id']
+                            ) }}">
+
+                            👮 Dashboard
+
+                        </a>
+
+
+                        <form
+                            method="POST"
+                            action="{{ url_for(
+                                'delete_officer',
+                                officer_id=officer['id']
+                            ) }}"
+                            style="display:inline;">
+
+                            <button
+                                type="submit"
+                                class="delete"
+                                onclick="return confirm(
+                                    'Delete this officer?'
+                                );">
+
+                                🗑️ Delete
+
+                            </button>
+
+                        </form>
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+        {% else %}
+
+
+        <div class="empty">
+
+            <h3>
+                No officers found
+            </h3>
+
+            <p>
+                Add your first officer above.
+            </p>
+
+        </div>
+
+
+        {% endif %}
+
+
+    </div>
+
+
+</div>
+
+
+</body>
+
+</html>
