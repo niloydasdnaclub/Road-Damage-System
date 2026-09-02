@@ -1,3 +1,4 @@
+
 from flask import (
     Flask,
     render_template,
@@ -11,7 +12,6 @@ from flask import (
 import sqlite3
 import os
 import uuid
-
 from datetime import datetime
 
 
@@ -20,74 +20,253 @@ from datetime import datetime
 # =========================================================
 
 app = Flask(__name__, template_folder=".")
-
 app.secret_key = "CHANGE_THIS_TO_A_STRONG_SECRET_KEY"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DATABASE = os.path.join(
-    BASE_DIR,
-    "database.db"
-)
+DATABASE = os.path.join(BASE_DIR, "database.db")
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 
-UPLOAD_FOLDER = os.path.join(
-    BASE_DIR,
-    "uploads"
-)
-
-os.makedirs(
-    UPLOAD_FOLDER,
-    exist_ok=True
-)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 
 # =========================================================
-# DATABASE CONNECTION
+# DATABASE
 # =========================================================
 
 def get_db():
-
-    conn = sqlite3.connect(
-        DATABASE
-    )
-
+    conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
-
     return conn
 
 
+def add_column_if_missing(conn, table, column, definition):
+    columns = [row["name"] for row in conn.execute(
+        f"PRAGMA table_info({table})"
+    ).fetchall()]
+
+    if column not in columns:
+        conn.execute(
+            f"ALTER TABLE {table} ADD COLUMN {column} {definition}"
+        )
+
+
+def init_db():
+
+    conn = get_db()
+
+    # -----------------------------------------------------
+    # Complaints table
+    # -----------------------------------------------------
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS complaints (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            complaint_id TEXT UNIQUE,
+            name TEXT,
+            mobile TEXT,
+            email TEXT,
+            address TEXT,
+            latitude TEXT,
+            longitude TEXT,
+            problem_type TEXT,
+            description TEXT,
+            photo TEXT,
+            video TEXT,
+            status TEXT DEFAULT 'Submitted',
+            department TEXT DEFAULT 'Not Assigned',
+            branch TEXT DEFAULT 'Not Assigned',
+            officer TEXT DEFAULT 'Not Assigned',
+            created_at TEXT
+        )
+    """)
+
+    # -----------------------------------------------------
+    # Officers table
+    # -----------------------------------------------------
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS officers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            department TEXT,
+            branch TEXT,
+            mobile TEXT,
+            status TEXT DEFAULT 'Active',
+            created_at TEXT
+        )
+    """)
+
+    # -----------------------------------------------------
+    # AI columns
+    # -----------------------------------------------------
+
+    add_column_if_missing(
+        conn,
+        "complaints",
+        "ai_problem",
+        "TEXT DEFAULT 'Not Analyzed'"
+    )
+
+    add_column_if_missing(
+        conn,
+        "complaints",
+        "severity_score",
+        "INTEGER DEFAULT 0"
+    )
+
+    add_column_if_missing(
+        conn,
+        "complaints",
+        "priority",
+        "TEXT DEFAULT 'Low'"
+    )
+
+    # -----------------------------------------------------
+    # Officer created_at migration
+    # -----------------------------------------------------
+
+    add_column_if_missing(
+        conn,
+        "officers",
+        "created_at",
+        "TEXT"
+    )
+
+    conn.commit()
+    conn.close()
+
+
+# IMPORTANT:
+# This runs when Gunicorn/Render imports app.py.
+init_db()
+
+
 # =========================================================
-# AI COMPLAINT ANALYZER
+# AI ANALYSIS
+# DESCRIPTION + PHOTO
 # =========================================================
 
-def analyze_complaint(problem_type, description):
+def analyze_complaint(problem_type="", description="", photo=""):
 
-    problem = (
-        (problem_type or "") + " " +
-        (description or "")
-    ).lower()
+    problem = str(problem_type or "").lower().strip()
+    desc = str(description or "").lower().strip()
+    photo_name = str(photo or "").lower().strip()
+
+    text = problem + " " + desc
 
     score = 0
 
-    # -----------------------------------------------------
-    # PROBLEM TYPE / KEYWORDS
-    # -----------------------------------------------------
 
-    critical_words = [
-        "bridge collapse",
-        "road collapse",
-        "collapsed",
-        "accident",
+    # =====================================================
+    # 1. EMERGENCY / LIFE THREAT
+    # =====================================================
+
+    emergency_words = [
+        "current",
+        "live wire",
+        "live electric wire",
+        "wire have current",
+        "wire has current",
+        "electric shock",
+        "electrocution",
+        "electrocuted",
+        "high voltage",
+        "danger to life",
         "dangerous",
         "life threatening",
         "life-threatening",
+        "immediate danger",
+        "emergency",
+        "fatal",
+        "killed",
+        "death",
+        "people dead",
+        "person dead",
+        "many people dead",
+        "someone died",
+        "people are dead"
+    ]
+
+    emergency_found = any(
+        word in text for word in emergency_words
+    )
+
+    if emergency_found:
+        score += 40
+
+
+    # =====================================================
+    # 2. ELECTRICAL INFRASTRUCTURE
+    # =====================================================
+
+    electrical_words = [
+        "electric wire",
+        "electrical wire",
+        "electricity wire",
+        "power wire",
+        "power line",
+        "electric line",
+        "fallen wire",
+        "fallen electric wire",
+        "fallen power line",
+        "wire fallen",
+        "wire down",
+        "electric pole",
+        "power pole",
+        "electric cable",
+        "electrical cable",
+        "live wire",
+        "electric current",
+        "current wire",
+        "high voltage",
+        "transformer",
+        "electricity pole",
+        "electricity line",
+        "power cable"
+    ]
+
+    electrical_found = any(
+        word in text for word in electrical_words
+    )
+
+    if electrical_found:
+        score += 35
+
+
+    # =====================================================
+    # 3. CRITICAL INFRASTRUCTURE
+    # =====================================================
+
+    critical_words = [
+        "bridge collapse",
+        "bridge collapsed",
+        "road collapse",
+        "road collapsed",
+        "building collapse",
+        "building collapsed",
+        "wall collapse",
+        "wall collapsed",
         "major accident",
         "landslide",
         "flooded road",
-        "road completely broken"
+        "road completely broken",
+        "completely destroyed"
     ]
+
+    critical_found = any(
+        word in text for word in critical_words
+    )
+
+    if critical_found:
+        score += 30
+
+
+    # =====================================================
+    # 4. HIGH SEVERITY WORDS
+    # =====================================================
 
     high_words = [
         "large pothole",
@@ -103,8 +282,20 @@ def analyze_complaint(problem_type, description):
         "unsafe",
         "traffic problem",
         "waterlogging",
-        "blocked road"
+        "blocked road",
+        "road blocked",
+        "severe damage",
+        "major damage"
     ]
+
+    for word in high_words:
+        if word in text:
+            score += 20
+
+
+    # =====================================================
+    # 5. MEDIUM SEVERITY WORDS
+    # =====================================================
 
     medium_words = [
         "pothole",
@@ -112,14 +303,25 @@ def analyze_complaint(problem_type, description):
         "broken",
         "damaged",
         "street light",
+        "streetlight",
         "drain",
         "drainage",
         "garbage",
         "water leak",
+        "water leakage",
         "leakage",
         "footpath",
         "sidewalk"
     ]
+
+    for word in medium_words:
+        if word in text:
+            score += 12
+
+
+    # =====================================================
+    # 6. LOW SEVERITY WORDS
+    # =====================================================
 
     low_words = [
         "small crack",
@@ -131,140 +333,252 @@ def analyze_complaint(problem_type, description):
         "maintenance"
     ]
 
-    # -----------------------------------------------------
-    # SCORE
-    # -----------------------------------------------------
-
-    for word in critical_words:
-
-        if word in problem:
-            score += 30
-
-    for word in high_words:
-
-        if word in problem:
-            score += 20
-
-    for word in medium_words:
-
-        if word in problem:
-            score += 12
-
     for word in low_words:
-
-        if word in problem:
+        if word in text:
             score += 5
 
 
-    # -----------------------------------------------------
-    # PROBLEM TYPE BASE SCORE
-    # -----------------------------------------------------
+    # =====================================================
+    # 7. PROBLEM TYPE BASE SCORE
+    # =====================================================
 
-    ptype = (problem_type or "").lower()
-
-    if "road" in ptype:
-        score += 20
-
-    if "pothole" in ptype:
+    if "pothole" in problem:
         score += 25
 
-    if "bridge" in ptype:
+    elif "road" in problem:
+        score += 20
+
+    elif "bridge" in problem:
         score += 30
 
-    if "accident" in ptype:
+    elif "accident" in problem:
         score += 35
 
-    if "electric" in ptype:
-        score += 15
+    elif (
+        "electric" in problem
+        or "electrical" in problem
+        or "wire" in problem
+        or "power" in problem
+    ):
+        score += 25
 
-    if "street light" in ptype:
+    elif "street" in problem and "light" in problem:
         score += 10
 
-    if "drain" in ptype:
+    elif "drain" in problem:
         score += 15
 
 
-    # -----------------------------------------------------
-    # DESCRIPTION LENGTH / DETAILS
-    # -----------------------------------------------------
+    # =====================================================
+    # 8. FALLEN WIRE EXTRA SCORE
+    # =====================================================
 
-    if len(description or "") > 100:
+    if (
+        ("wire" in text or "cable" in text)
+        and (
+            "fallen" in text
+            or "fall" in text
+            or "down" in text
+            or "broken" in text
+        )
+    ):
+        score += 25
+
+
+    # =====================================================
+    # 9. PUBLIC DANGER
+    # =====================================================
+
+    public_danger_words = [
+        "many people",
+        "people are",
+        "public",
+        "children",
+        "crowd",
+        "house",
+        "houses",
+        "road",
+        "people walking",
+        "people passing",
+        "near school",
+        "near hospital",
+        "near market"
+    ]
+
+    public_danger_found = any(
+        word in text for word in public_danger_words
+    )
+
+    if electrical_found and public_danger_found:
+        score += 15
+
+
+    # =====================================================
+    # 10. DESCRIPTION LENGTH
+    # =====================================================
+
+    if len(desc) > 100:
         score += 5
 
-    if len(description or "") > 250:
+    if len(desc) > 250:
         score += 5
 
 
-    # -----------------------------------------------------
-    # LIMIT SCORE
-    # -----------------------------------------------------
+    # =====================================================
+    # 11. PHOTO ANALYSIS FALLBACK
+    # =====================================================
+    #
+    # Without a Vision API we cannot inspect actual pixels.
+    # But uploaded photo presence increases confidence slightly.
+    #
+    # Later a Vision AI API can replace this section.
+    #
+
+    photo_found = bool(photo_name)
+
+    if photo_found:
+        score += 5
+
+
+    # =====================================================
+    # 12. PHOTO FILENAME SIGNALS
+    # =====================================================
+    #
+    # If filenames contain useful words, use them as an
+    # additional signal.
+    #
+
+    photo_signal_words = {
+
+        "fire": 20,
+        "accident": 25,
+        "collapse": 25,
+        "collapsed": 25,
+
+        "pothole": 15,
+        "road_damage": 15,
+        "roaddamage": 15,
+
+        "broken_road": 20,
+        "bridge": 25,
+
+        "electric": 20,
+        "electrical": 20,
+        "wire": 20,
+        "livewire": 30,
+        "powerline": 25,
+
+        "flood": 20,
+        "waterlogging": 15,
+
+        "garbage": 10,
+        "drain": 10,
+
+        "streetlight": 10,
+        "street_light": 10
+    }
+
+    for word, points in photo_signal_words.items():
+
+        if word in photo_name:
+            score += points
+
+
+    # =====================================================
+    # 13. MAX SCORE
+    # =====================================================
 
     score = min(score, 100)
 
 
-    # -----------------------------------------------------
-    # AI PROBLEM CLASSIFICATION
-    # -----------------------------------------------------
+    # =====================================================
+    # 14. AI PROBLEM CLASSIFICATION
+    # =====================================================
+    #
+    # IMPORTANT:
+    # Electrical is checked BEFORE road.
+    # This prevents:
+    #
+    # "electric wire fallen on road"
+    #
+    # from becoming Road Damage.
+    #
 
-    if (
-        "bridge" in problem
-        or "collapse" in problem
-        or "accident" in problem
-    ):
+    if electrical_found:
+
+        ai_problem = "Electrical Infrastructure"
+
+    elif critical_found:
 
         ai_problem = "Critical Infrastructure Damage"
 
     elif (
-        "pothole" in problem
-        or "road" in problem
-        or "crack" in problem
+        "pothole" in text
+        or "road damage" in text
+        or "damaged road" in text
+        or "broken road" in text
+        or "road damage" in problem
+        or "crack" in text
     ):
 
         ai_problem = "Road Damage"
 
     elif (
-        "electric" in problem
-        or "street light" in problem
-        or "light" in problem
-    ):
-
-        ai_problem = "Electrical Infrastructure"
-
-    elif (
-        "drain" in problem
-        or "water" in problem
-        or "waterlogging" in problem
+        "drain" in text
+        or "drainage" in text
+        or "waterlogging" in text
+        or "water leak" in text
     ):
 
         ai_problem = "Drainage / Water Issue"
 
     elif (
-        "garbage" in problem
-        or "waste" in problem
-        or "dirty" in problem
+        "garbage" in text
+        or "waste" in text
+        or "dirty" in text
     ):
 
         ai_problem = "Waste Management Issue"
 
     elif (
-        "footpath" in problem
-        or "sidewalk" in problem
+        "footpath" in text
+        or "sidewalk" in text
     ):
 
         ai_problem = "Footpath / Sidewalk Damage"
 
+    elif (
+        "street light" in text
+        or "streetlight" in text
+    ):
+
+        ai_problem = "Street Light Issue"
+
+    elif problem:
+
+        ai_problem = problem_type
+
     else:
 
-        ai_problem = (
-            problem_type
-            if problem_type
-            else "General Infrastructure Issue"
-        )
+        ai_problem = "General Infrastructure Issue"
 
 
-    # -----------------------------------------------------
-    # PRIORITY
-    # -----------------------------------------------------
+    # =====================================================
+    # 15. CRITICAL EMERGENCY OVERRIDE
+    # =====================================================
+
+    if electrical_found and emergency_found:
+
+        score = max(score, 95)
+
+    elif critical_found and emergency_found:
+
+        score = max(score, 95)
+
+
+    # =====================================================
+    # 16. PRIORITY
+    # =====================================================
 
     if score >= 80:
 
@@ -283,563 +597,270 @@ def analyze_complaint(problem_type, description):
         priority = "Low"
 
 
-    return (
-        ai_problem,
-        score,
-        priority
-    )
+    # Extra emergency protection
+
+    if electrical_found and emergency_found:
+
+        priority = "Critical"
+
+    elif critical_found and emergency_found:
+
+        priority = "Critical"
+
+
+    return ai_problem, score, priority
 
 
 # =========================================================
-# DATABASE INITIALIZATION
-# =========================================================
-
-def init_db():
-
-    conn = get_db()
-
-    # -----------------------------------------------------
-    # COMPLAINTS TABLE
-    # -----------------------------------------------------
-
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS complaints (
-
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-            complaint_id TEXT UNIQUE,
-
-            name TEXT NOT NULL,
-
-            mobile TEXT NOT NULL,
-
-            email TEXT,
-
-            address TEXT NOT NULL,
-
-            latitude TEXT,
-
-            longitude TEXT,
-
-            problem_type TEXT NOT NULL,
-
-            description TEXT NOT NULL,
-
-            photo TEXT,
-
-            video TEXT,
-
-            status TEXT DEFAULT 'Submitted',
-
-            department TEXT DEFAULT 'Not Assigned',
-
-            branch TEXT DEFAULT 'Not Assigned',
-
-            officer TEXT DEFAULT 'Not Assigned',
-
-            created_at TEXT NOT NULL,
-
-            ai_problem TEXT DEFAULT 'Not Analyzed',
-
-            severity_score INTEGER DEFAULT 0,
-
-            priority TEXT DEFAULT 'Low'
-
-        )
-    """)
-
-
-    # -----------------------------------------------------
-    # OFFICERS TABLE
-    # -----------------------------------------------------
-
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS officers (
-
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-            name TEXT NOT NULL,
-
-            department TEXT NOT NULL,
-
-            branch TEXT NOT NULL,
-
-            mobile TEXT,
-
-            status TEXT DEFAULT 'Active',
-
-            created_at TEXT
-
-        )
-    """)
-
-
-    # =====================================================
-    # COMPLAINTS MIGRATION
-    # =====================================================
-
-    complaint_columns = [
-        row["name"]
-        for row in conn.execute(
-            "PRAGMA table_info(complaints)"
-        ).fetchall()
-    ]
-
-
-    if "ai_problem" not in complaint_columns:
-
-        conn.execute("""
-            ALTER TABLE complaints
-            ADD COLUMN ai_problem TEXT
-            DEFAULT 'Not Analyzed'
-        """)
-
-
-    if "severity_score" not in complaint_columns:
-
-        conn.execute("""
-            ALTER TABLE complaints
-            ADD COLUMN severity_score INTEGER
-            DEFAULT 0
-        """)
-
-
-    if "priority" not in complaint_columns:
-
-        conn.execute("""
-            ALTER TABLE complaints
-            ADD COLUMN priority TEXT
-            DEFAULT 'Low'
-        """)
-
-
-    # =====================================================
-    # OFFICER MIGRATION
-    # =====================================================
-
-    officer_columns = [
-        row["name"]
-        for row in conn.execute(
-            "PRAGMA table_info(officers)"
-        ).fetchall()
-    ]
-
-
-    if "created_at" not in officer_columns:
-
-        conn.execute("""
-            ALTER TABLE officers
-            ADD COLUMN created_at TEXT
-        """)
-
-
-    # =====================================================
-    # UPDATE EMPTY CREATED DATE
-    # =====================================================
-
-    conn.execute("""
-        UPDATE officers
-        SET created_at = ?
-        WHERE created_at IS NULL
-    """, (
-        datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
-        ),
-    ))
-
-
-    # =====================================================
-    # UPDATE OLD COMPLAINT AI VALUES
-    # =====================================================
-
-    conn.execute("""
-        UPDATE complaints
-        SET ai_problem = problem_type
-        WHERE ai_problem IS NULL
-        OR ai_problem = ''
-        OR ai_problem = 'Not Analyzed'
-    """)
-
-
-    conn.execute("""
-        UPDATE complaints
-        SET severity_score = 0
-        WHERE severity_score IS NULL
-    """)
-
-
-    conn.execute("""
-        UPDATE complaints
-        SET priority = 'Low'
-        WHERE priority IS NULL
-        OR priority = ''
-    """)
-
-
-       # AI columns migration for Render
-    columns = [row[1] for row in conn.execute("PRAGMA table_info(complaints)")]
-
-    if "ai_problem" not in columns:
-        conn.execute(
-            "ALTER TABLE complaints ADD COLUMN ai_problem TEXT DEFAULT 'Not Analyzed'"
-        )
-
-    if "severity_score" not in columns:
-        conn.execute(
-            "ALTER TABLE complaints ADD COLUMN severity_score INTEGER DEFAULT 0"
-        )
-
-    if "priority" not in columns:
-        conn.execute(
-            "ALTER TABLE complaints ADD COLUMN priority TEXT DEFAULT 'Low'"
-        )
-
-    conn.commit()
-
-    conn.close()
-
-
-# =========================================================
-# IMPORTANT
-# DATABASE MUST INITIALIZE WHEN GUNICORN STARTS
-# =========================================================
-
-init_db()
-
-
-# =========================================================
-# PUBLIC HOME PAGE
+# HOME
 # =========================================================
 
 @app.route("/")
 def home():
-
-    return render_template(
-        "index.html"
-    )
+    return render_template("index.html")
 
 
 # =========================================================
-# PUBLIC REPORT COMPLAINT
+# REPORT COMPLAINT
 # =========================================================
 
-@app.route(
-    "/report",
-    methods=["GET", "POST"]
-)
+@app.route("/report", methods=["GET", "POST"])
 def report():
 
-    if request.method == "POST":
+    if request.method == "GET":
+        return render_template("report.html")
 
-        # -------------------------------------------------
-        # CITIZEN INFORMATION
-        # -------------------------------------------------
+    name = request.form.get("name", "")
+    mobile = request.form.get("mobile", "")
+    email = request.form.get("email", "")
+    address = request.form.get("address", "")
 
-        name = request.form.get(
-            "name",
-            ""
-        ).strip()
+    latitude = request.form.get("latitude", "")
+    longitude = request.form.get("longitude", "")
 
-        mobile = request.form.get(
-            "mobile",
-            ""
-        ).strip()
-
-        email = request.form.get(
-            "email",
-            ""
-        ).strip()
-
-        address = request.form.get(
-            "address",
-            ""
-        ).strip()
+    problem_type = request.form.get("problem_type", "")
+    description = request.form.get("description", "")
 
 
-        # -------------------------------------------------
-        # LOCATION
-        # -------------------------------------------------
+    # =====================================================
+    # COMPLAINT ID
+    # =====================================================
 
-        location = request.form.get(
-            "location",
-            ""
-        ).strip()
-
-        latitude = ""
-
-        longitude = ""
-
-        if "," in location:
-
-            latitude, longitude = [
-                value.strip()
-                for value in location.split(
-                    ",",
-                    1
-                )
-            ]
+    complaint_id = "CR-" + uuid.uuid4().hex[:8].upper()
 
 
-        # -------------------------------------------------
-        # PROBLEM DETAILS
-        # -------------------------------------------------
+    # =====================================================
+    # PHOTO UPLOAD
+    # =====================================================
 
-        problem_type = request.form.get(
-            "problem_type",
-            ""
-        ).strip()
+    photo_file = request.files.get("photo")
 
-        description = request.form.get(
-            "description",
-            ""
-        ).strip()
+    photo_filename = ""
 
+    if photo_file and photo_file.filename:
 
-        # -------------------------------------------------
-        # AI ANALYSIS
-        # -------------------------------------------------
+        original_name = photo_file.filename
 
-        (
-            ai_problem,
-            severity_score,
-            priority
-        ) = analyze_complaint(
-            problem_type,
-            description
+        extension = os.path.splitext(
+            original_name
+        )[1].lower()
+
+        photo_filename = (
+            complaint_id
+            + "_photo"
+            + extension
+        )
+
+        photo_file.save(
+            os.path.join(
+                app.config["UPLOAD_FOLDER"],
+                photo_filename
+            )
         )
 
 
-        # -------------------------------------------------
-        # FILE UPLOAD
-        # -------------------------------------------------
+    # =====================================================
+    # VIDEO UPLOAD
+    # =====================================================
 
-        photo_file = request.files.get(
-            "photo"
+    video_file = request.files.get("video")
+
+    video_filename = ""
+
+    if video_file and video_file.filename:
+
+        original_name = video_file.filename
+
+        extension = os.path.splitext(
+            original_name
+        )[1].lower()
+
+        video_filename = (
+            complaint_id
+            + "_video"
+            + extension
         )
 
-        video_file = request.files.get(
-            "video"
-        )
-
-        photo_name = ""
-
-        video_name = ""
-
-
-        # -------------------------------------------------
-        # SAVE PHOTO
-        # -------------------------------------------------
-
-        if (
-            photo_file
-            and photo_file.filename
-        ):
-
-            extension = os.path.splitext(
-                photo_file.filename
-            )[1]
-
-            photo_name = (
-                uuid.uuid4().hex
-                + extension
+        video_file.save(
+            os.path.join(
+                app.config["UPLOAD_FOLDER"],
+                video_filename
             )
-
-            photo_file.save(
-                os.path.join(
-                    UPLOAD_FOLDER,
-                    photo_name
-                )
-            )
-
-
-        # -------------------------------------------------
-        # SAVE VIDEO
-        # -------------------------------------------------
-
-        if (
-            video_file
-            and video_file.filename
-        ):
-
-            extension = os.path.splitext(
-                video_file.filename
-            )[1]
-
-            video_name = (
-                uuid.uuid4().hex
-                + extension
-            )
-
-            video_file.save(
-                os.path.join(
-                    UPLOAD_FOLDER,
-                    video_name
-                )
-            )
-
-
-        # -------------------------------------------------
-        # GENERATE COMPLAINT ID
-        # -------------------------------------------------
-
-        complaint_id = (
-            "CIVIC-"
-            + datetime.now().strftime("%Y")
-            + "-"
-            + uuid.uuid4().hex[:6].upper()
         )
 
 
-        # -------------------------------------------------
-        # CREATED DATE
-        # -------------------------------------------------
+    # =====================================================
+    # AI ANALYSIS
+    # DESCRIPTION + PHOTO
+    # =====================================================
 
-        created_at = datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+    (
+        ai_problem,
+        severity_score,
+        priority
+    ) = analyze_complaint(
+        problem_type,
+        description,
+        photo_filename
+    )
 
 
-        # -------------------------------------------------
-        # SAVE COMPLAINT
-        # -------------------------------------------------
+    # =====================================================
+    # DEPARTMENT ROUTING
+    # =====================================================
 
-        conn = get_db()
+    department = "Not Assigned"
+
+    lower_problem = (
+        problem_type + " " + description
+    ).lower()
 
 
-        conn.execute("""
-            INSERT INTO complaints (
+    if (
+        "electric" in lower_problem
+        or "electrical" in lower_problem
+        or "wire" in lower_problem
+        or "power" in lower_problem
+        or "street light" in lower_problem
+    ):
 
-                complaint_id,
+        department = "Electrical"
 
-                name,
+    elif (
+        "road" in lower_problem
+        or "pothole" in lower_problem
+        or "bridge" in lower_problem
+    ):
 
-                mobile,
+        department = "PWD / Roads"
 
-                email,
+    elif (
+        "drain" in lower_problem
+        or "drainage" in lower_problem
+        or "water" in lower_problem
+    ):
 
-                address,
+        department = "Water / Drainage"
 
-                latitude,
+    elif (
+        "garbage" in lower_problem
+        or "waste" in lower_problem
+    ):
 
-                longitude,
+        department = "Municipality"
 
-                problem_type,
 
-                description,
+    # =====================================================
+    # DATABASE INSERT
+    # =====================================================
 
-                photo,
+    conn = get_db()
 
-                video,
-
-                status,
-
-                department,
-
-                branch,
-
-                officer,
-
-                created_at,
-
-                ai_problem,
-
-                severity_score,
-
-                priority
-
-            )
-
-            VALUES (
-
-                ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-
-            )
-        """, (
-
+    conn.execute("""
+        INSERT INTO complaints (
             complaint_id,
-
             name,
-
             mobile,
-
             email,
-
             address,
-
             latitude,
-
             longitude,
-
             problem_type,
-
             description,
-
-            photo_name,
-
-            video_name,
-
-            "Submitted",
-
-            "Not Assigned",
-
-            "Not Assigned",
-
-            "Not Assigned",
-
+            photo,
+            video,
+            status,
+            department,
+            branch,
+            officer,
             created_at,
-
             ai_problem,
-
             severity_score,
-
             priority
-
-        ))
-
-
-        conn.commit()
-
-        conn.close()
-
-
-        # -------------------------------------------------
-        # SUCCESS PAGE
-        # -------------------------------------------------
-
-        return render_template(
-            "success.html",
-
-            complaint_id=complaint_id,
-
-            ai_problem=ai_problem,
-
-            severity_score=severity_score,
-
-            priority=priority
-
         )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        complaint_id,
+        name,
+        mobile,
+        email,
+        address,
+        latitude,
+        longitude,
+        problem_type,
+        description,
+        photo_filename,
+        video_filename,
+        "Submitted",
+        department,
+        "Not Assigned",
+        "Not Assigned",
+        datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
+        ai_problem,
+        severity_score,
+        priority
+    ))
 
+    conn.commit()
+    conn.close()
+
+
+    # =====================================================
+    # SUCCESS PAGE
+    # =====================================================
 
     return render_template(
-        "report.html"
+        "success.html",
+        complaint_id=complaint_id,
+        ai_problem=ai_problem,
+        severity_score=severity_score,
+        priority=priority
     )
 
 
 # =========================================================
-# PUBLIC COMPLAINT TRACKING
+# SERVE UPLOADED FILES
 # =========================================================
 
-@app.route(
-    "/track",
-    methods=["GET", "POST"]
-)
+@app.route("/uploads/<filename>")
+def uploaded_file(filename):
+
+    return send_from_directory(
+        app.config["UPLOAD_FOLDER"],
+        filename
+    )
+
+
+# =========================================================
+# PUBLIC TRACKING
+# =========================================================
+
+@app.route("/track", methods=["GET", "POST"])
 def track():
 
     complaint = None
-
-    error = None
-
 
     if request.method == "POST":
 
@@ -848,51 +869,529 @@ def track():
             ""
         ).strip()
 
-
         conn = get_db()
-
 
         complaint = conn.execute("""
             SELECT *
             FROM complaints
             WHERE complaint_id = ?
-        """, (
-            complaint_id,
-        )).fetchone()
-
+        """, (complaint_id,)).fetchone()
 
         conn.close()
 
 
-        if complaint is None:
-
-            error = (
-                "Complaint ID not found."
-            )
-
-
     return render_template(
         "track.html",
-
-        complaint=complaint,
-
-        error=error
-
+        complaint=complaint
     )
 
 
 # =========================================================
-# SERVE UPLOADED FILES
+# ADMIN LOGIN
+# =========================================================
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+
+    if request.method == "POST":
+
+        username = request.form.get(
+            "username",
+            ""
+        )
+
+        password = request.form.get(
+            "password",
+            ""
+        )
+
+        # Change these credentials
+        if (
+            username == "admin"
+            and password == "admin123"
+        ):
+
+            session["admin_logged_in"] = True
+
+            return redirect(
+                url_for("admin_dashboard")
+            )
+
+        return render_template(
+            "admin_login.html",
+            error="Invalid username or password"
+        )
+
+
+    return render_template(
+        "admin_login.html"
+    )
+
+
+# =========================================================
+# ADMIN LOGOUT
+# =========================================================
+
+@app.route("/admin/logout")
+def admin_logout():
+
+    session.pop(
+        "admin_logged_in",
+        None
+    )
+
+    return redirect(
+        url_for("admin_login")
+    )
+
+
+# =========================================================
+# ADMIN DASHBOARD
+# =========================================================
+
+@app.route("/admin")
+def admin_dashboard():
+
+    if not session.get("admin_logged_in"):
+
+        return redirect(
+            url_for("admin_login")
+        )
+
+
+    conn = get_db()
+
+
+    complaints = conn.execute("""
+        SELECT *
+        FROM complaints
+        ORDER BY id DESC
+    """).fetchall()
+
+
+    officers = conn.execute("""
+        SELECT *
+        FROM officers
+        ORDER BY id DESC
+    """).fetchall()
+
+
+    total = conn.execute("""
+        SELECT COUNT(*) AS count
+        FROM complaints
+    """).fetchone()["count"]
+
+
+    submitted = conn.execute("""
+        SELECT COUNT(*) AS count
+        FROM complaints
+        WHERE status = 'Submitted'
+    """).fetchone()["count"]
+
+
+    pending = conn.execute("""
+        SELECT COUNT(*) AS count
+        FROM complaints
+        WHERE status = 'Pending'
+    """).fetchone()["count"]
+
+
+    in_progress = conn.execute("""
+        SELECT COUNT(*) AS count
+        FROM complaints
+        WHERE status = 'In Progress'
+    """).fetchone()["count"]
+
+
+    resolved = conn.execute("""
+        SELECT COUNT(*) AS count
+        FROM complaints
+        WHERE status = 'Resolved'
+    """).fetchone()["count"]
+
+
+    critical = conn.execute("""
+        SELECT COUNT(*) AS count
+        FROM complaints
+        WHERE priority = 'Critical'
+    """).fetchone()["count"]
+
+
+    high = conn.execute("""
+        SELECT COUNT(*) AS count
+        FROM complaints
+        WHERE priority = 'High'
+    """).fetchone()["count"]
+
+
+    medium = conn.execute("""
+        SELECT COUNT(*) AS count
+        FROM complaints
+        WHERE priority = 'Medium'
+    """).fetchone()["count"]
+
+
+    low = conn.execute("""
+        SELECT COUNT(*) AS count
+        FROM complaints
+        WHERE priority = 'Low'
+    """).fetchone()["count"]
+
+
+    conn.close()
+
+
+    return render_template(
+        "admin_dashboard.html",
+        complaints=complaints,
+        officers=officers,
+        total=total,
+        submitted=submitted,
+        pending=pending,
+        in_progress=in_progress,
+        resolved=resolved,
+        critical=critical,
+        high=high,
+        medium=medium,
+        low=low
+    )
+
+
+# =========================================================
+# ADD OFFICER
+# =========================================================
+
+@app.route("/admin/officer/add", methods=["POST"])
+def add_officer():
+
+    if not session.get("admin_logged_in"):
+
+        return redirect(
+            url_for("admin_login")
+        )
+
+
+    name = request.form.get(
+        "name",
+        ""
+    )
+
+    department = request.form.get(
+        "department",
+        ""
+    )
+
+    branch = request.form.get(
+        "branch",
+        ""
+    )
+
+    mobile = request.form.get(
+        "mobile",
+        ""
+    )
+
+
+    conn = get_db()
+
+    conn.execute("""
+        INSERT INTO officers (
+            name,
+            department,
+            branch,
+            mobile,
+            status,
+            created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        name,
+        department,
+        branch,
+        mobile,
+        "Active",
+        datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+    ))
+
+    conn.commit()
+    conn.close()
+
+
+    return redirect(
+        url_for("admin_dashboard")
+    )
+
+
+# =========================================================
+# DELETE OFFICER
 # =========================================================
 
 @app.route(
-    "/uploads/<filename>"
+    "/admin/officer/<int:officer_id>/delete",
+    methods=["POST"]
 )
-def uploaded_file(filename):
+def delete_officer(officer_id):
 
-    return send_from_directory(
-        app.config["UPLOAD_FOLDER"],
-        filename
+    if not session.get("admin_logged_in"):
+
+        return redirect(
+            url_for("admin_login")
+        )
+
+
+    conn = get_db()
+
+    conn.execute("""
+        DELETE FROM officers
+        WHERE id = ?
+    """, (officer_id,))
+
+    conn.commit()
+    conn.close()
+
+
+    return redirect(
+        url_for("admin_dashboard")
+    )
+
+
+# =========================================================
+# ASSIGN COMPLAINT
+# =========================================================
+
+@app.route(
+    "/admin/complaint/<int:complaint_id>/assign",
+    methods=["POST"]
+)
+def assign_complaint(complaint_id):
+
+    if not session.get("admin_logged_in"):
+
+        return redirect(
+            url_for("admin_login")
+        )
+
+
+    department = request.form.get(
+        "department",
+        "Not Assigned"
+    )
+
+    branch = request.form.get(
+        "branch",
+        "Not Assigned"
+    )
+
+    officer = request.form.get(
+        "officer",
+        "Not Assigned"
+    )
+
+
+    conn = get_db()
+
+    conn.execute("""
+        UPDATE complaints
+        SET
+            department = ?,
+            branch = ?,
+            officer = ?,
+            status = 'Assigned'
+        WHERE id = ?
+    """, (
+        department,
+        branch,
+        officer,
+        complaint_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+
+    return redirect(
+        url_for("admin_dashboard")
+    )
+
+
+# =========================================================
+# ADMIN UPDATE STATUS
+# =========================================================
+
+@app.route(
+    "/admin/complaint/<int:complaint_id>/update",
+    methods=["POST"]
+)
+def admin_update_complaint(
+    complaint_id
+):
+
+    if not session.get("admin_logged_in"):
+
+        return redirect(
+            url_for("admin_login")
+        )
+
+
+    status = request.form.get(
+        "status",
+        "Submitted"
+    )
+
+
+    conn = get_db()
+
+    conn.execute("""
+        UPDATE complaints
+        SET status = ?
+        WHERE id = ?
+    """, (
+        status,
+        complaint_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+
+    return redirect(
+        url_for("admin_dashboard")
+    )
+
+
+# =========================================================
+# OFFICER DASHBOARD
+# =========================================================
+
+@app.route(
+    "/officer/<int:officer_id>"
+)
+def officer_dashboard(officer_id):
+
+    conn = get_db()
+
+
+    officer = conn.execute("""
+        SELECT *
+        FROM officers
+        WHERE id = ?
+    """, (officer_id,)).fetchone()
+
+
+    if not officer:
+
+        conn.close()
+
+        return "Officer not found", 404
+
+
+    complaints = conn.execute("""
+        SELECT *
+        FROM complaints
+        WHERE officer = ?
+        ORDER BY id DESC
+    """, (
+        officer["name"],
+    )).fetchall()
+
+
+    total = len(complaints)
+
+    submitted = sum(
+        1 for c in complaints
+        if c["status"] == "Submitted"
+    )
+
+    pending = sum(
+        1 for c in complaints
+        if c["status"] == "Pending"
+    )
+
+    in_progress = sum(
+        1 for c in complaints
+        if c["status"] == "In Progress"
+    )
+
+    resolved = sum(
+        1 for c in complaints
+        if c["status"] == "Resolved"
+    )
+
+
+    conn.close()
+
+
+    return render_template(
+        "officer_dashboard.html",
+        officer=officer,
+        complaints=complaints,
+        total=total,
+        submitted=submitted,
+        pending=pending,
+        in_progress=in_progress,
+        resolved=resolved
+    )
+
+
+# =========================================================
+# OFFICER UPDATE COMPLAINT
+# =========================================================
+
+@app.route(
+    "/officer/<int:officer_id>/complaint/<int:complaint_id>/update",
+    methods=["POST"]
+)
+def officer_update_complaint(
+    officer_id,
+    complaint_id
+):
+
+    status = request.form.get(
+        "status",
+        "Submitted"
+    )
+
+
+    conn = get_db()
+
+
+    officer = conn.execute("""
+        SELECT *
+        FROM officers
+        WHERE id = ?
+    """, (officer_id,)).fetchone()
+
+
+    if not officer:
+
+        conn.close()
+
+        return "Officer not found", 404
+
+
+    conn.execute("""
+        UPDATE complaints
+        SET status = ?
+        WHERE id = ?
+        AND officer = ?
+    """, (
+        status,
+        complaint_id,
+        officer["name"]
+    ))
+
+
+    conn.commit()
+    conn.close()
+
+
+    return redirect(
+        url_for(
+            "officer_dashboard",
+            officer_id=officer_id
+        )
     )
 
 
@@ -924,1240 +1423,19 @@ def health():
 
 
 # =========================================================
-# ADMIN LOGIN
-# =========================================================
-
-@app.route(
-    "/admin/login",
-    methods=["GET", "POST"]
-)
-def admin_login():
-
-    error = None
-
-
-    if request.method == "POST":
-
-        username = request.form.get(
-            "username",
-            ""
-        ).strip()
-
-        password = request.form.get(
-            "password",
-            ""
-        )
-
-
-        if (
-            username == "admin"
-            and password == "Admin@123"
-        ):
-
-            session[
-                "admin_logged_in"
-            ] = True
-
-
-            return redirect(
-                url_for(
-                    "admin_dashboard"
-                )
-            )
-
-
-        error = (
-            "Invalid username or password."
-        )
-
-
-    return render_template(
-        "admin_login.html",
-        error=error
-    )
-
-
-# =========================================================
-# ADMIN LOGOUT
-# =========================================================
-
-@app.route(
-    "/admin/logout"
-)
-def admin_logout():
-
-    session.pop(
-        "admin_logged_in",
-        None
-    )
-
-
-    return redirect(
-        url_for(
-            "admin_login"
-        )
-    )
-
-
-# =========================================================
-# ADMIN LOGIN CHECK
-# =========================================================
-
-def admin_required():
-
-    return session.get(
-        "admin_logged_in"
-    )
-
-
-# =========================================================
-# ADMIN DASHBOARD
-# =========================================================
-
-@app.route("/admin")
-def admin_dashboard():
-
-    if not admin_required():
-
-        return redirect(
-            url_for(
-                "admin_login"
-            )
-        )
-
-
-    conn = get_db()
-
-
-    complaints = conn.execute("""
-        SELECT *
-        FROM complaints
-        ORDER BY id DESC
-    """).fetchall()
-
-
-    officers = conn.execute("""
-        SELECT *
-        FROM officers
-        ORDER BY id DESC
-    """).fetchall()
-
-
-    # -----------------------------------------------------
-    # STATISTICS
-    # -----------------------------------------------------
-
-    total_complaints = len(
-        complaints
-    )
-
-
-    submitted_complaints = sum(
-        1
-        for c in complaints
-        if c["status"] == "Submitted"
-    )
-
-
-    pending_complaints = sum(
-        1
-        for c in complaints
-        if c["status"] == "Pending"
-    )
-
-
-    in_progress_complaints = sum(
-        1
-        for c in complaints
-        if c["status"] == "In Progress"
-    )
-
-
-    resolved_complaints = sum(
-        1
-        for c in complaints
-        if c["status"] == "Resolved"
-    )
-
-
-    # -----------------------------------------------------
-    # NEW COMPLAINTS
-    # -----------------------------------------------------
-
-    new_complaints = [
-        c
-        for c in complaints
-        if c["status"] == "Submitted"
-    ]
-
-
-    notification_count = len(
-        new_complaints
-    )
-
-
-    # -----------------------------------------------------
-    # AI PRIORITY COUNTS
-    # -----------------------------------------------------
-
-    critical_complaints = sum(
-        1
-        for c in complaints
-        if c["priority"] == "Critical"
-    )
-
-
-    high_priority_complaints = sum(
-        1
-        for c in complaints
-        if c["priority"] == "High"
-    )
-
-
-    medium_priority_complaints = sum(
-        1
-        for c in complaints
-        if c["priority"] == "Medium"
-    )
-
-
-    low_priority_complaints = sum(
-        1
-        for c in complaints
-        if c["priority"] == "Low"
-    )
-
-
-    conn.close()
-
-
-    return render_template(
-        "admin_dashboard.html",
-
-        complaints=complaints,
-
-        officers=officers,
-
-        total_complaints=total_complaints,
-
-        submitted_complaints=submitted_complaints,
-
-        pending_complaints=pending_complaints,
-
-        in_progress_complaints=in_progress_complaints,
-
-        resolved_complaints=resolved_complaints,
-
-        new_complaints=new_complaints,
-
-        notification_count=notification_count,
-
-        critical_complaints=critical_complaints,
-
-        high_priority_complaints=high_priority_complaints,
-
-        medium_priority_complaints=medium_priority_complaints,
-
-        low_priority_complaints=low_priority_complaints
-
-    )
-
-
-# =========================================================
-# OFFICER MANAGEMENT
-# =========================================================
-
-@app.route(
-    "/admin/officers"
-)
-def officer_management():
-
-    if not admin_required():
-
-        return redirect(
-            url_for(
-                "admin_login"
-            )
-        )
-
-
-    conn = get_db()
-
-
-    officers = conn.execute("""
-        SELECT *
-        FROM officers
-        ORDER BY id DESC
-    """).fetchall()
-
-
-    conn.close()
-
-
-    return render_template(
-        "officer_management.html",
-        officers=officers
-    )
-
-
-# =========================================================
-# ADD OFFICER
-# =========================================================
-
-@app.route(
-    "/admin/officers/add",
-    methods=["GET", "POST"]
-)
-def add_officer():
-
-    if not admin_required():
-
-        return redirect(
-            url_for(
-                "admin_login"
-            )
-        )
-
-
-    if request.method == "POST":
-
-        name = request.form.get(
-            "name",
-            ""
-        ).strip()
-
-        department = request.form.get(
-            "department",
-            ""
-        ).strip()
-
-        branch = request.form.get(
-            "branch",
-            ""
-        ).strip()
-
-        mobile = request.form.get(
-            "mobile",
-            ""
-        ).strip()
-
-        status = request.form.get(
-            "status",
-            "Active"
-        ).strip()
-
-
-        if not status:
-
-            status = "Active"
-
-
-        created_at = datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
-
-
-        conn = get_db()
-
-
-        conn.execute("""
-            INSERT INTO officers (
-
-                name,
-                department,
-                branch,
-                mobile,
-                status,
-                created_at
-
-            )
-
-            VALUES (?, ?, ?, ?, ?, ?)
-
-        """, (
-
-            name,
-            department,
-            branch,
-            mobile,
-            status,
-            created_at
-
-        ))
-
-
-        conn.commit()
-
-        conn.close()
-
-
-        return redirect(
-            url_for(
-                "officer_management"
-            )
-        )
-
-
-    return render_template(
-        "add_officer.html"
-    )
-
-
-# =========================================================
-# DELETE OFFICER
-# =========================================================
-
-@app.route(
-    "/admin/officers/delete/<int:officer_id>",
-    methods=["GET", "POST"]
-)
-def delete_officer(officer_id):
-
-    if not admin_required():
-
-        return redirect(
-            url_for(
-                "admin_login"
-            )
-        )
-
-
-    conn = get_db()
-
-
-    officer = conn.execute("""
-        SELECT *
-        FROM officers
-        WHERE id = ?
-    """, (
-        officer_id,
-    )).fetchone()
-
-
-    if officer is None:
-
-        conn.close()
-
-        return "Officer not found", 404
-
-
-    # -----------------------------------------------------
-    # UNASSIGN OFFICER
-    # -----------------------------------------------------
-
-    conn.execute("""
-        UPDATE complaints
-
-        SET
-            officer = 'Not Assigned',
-            department = 'Not Assigned',
-            branch = 'Not Assigned'
-
-        WHERE officer = ?
-    """, (
-        officer["name"],
-    ))
-
-
-    # -----------------------------------------------------
-    # DELETE OFFICER
-    # -----------------------------------------------------
-
-    conn.execute("""
-        DELETE FROM officers
-        WHERE id = ?
-    """, (
-        officer_id,
-    ))
-
-
-    conn.commit()
-
-    conn.close()
-
-
-    return redirect(
-        url_for(
-            "officer_management"
-        )
-    )
-
-
-# =========================================================
-# ASSIGN COMPLAINT
-# =========================================================
-
-@app.route(
-    "/admin/complaint/<int:complaint_id>/assign",
-    methods=["POST"]
-)
-def assign_complaint(complaint_id):
-
-    if not admin_required():
-
-        return redirect(
-            url_for(
-                "admin_login"
-            )
-        )
-
-
-    department = request.form.get(
-        "department",
-        "Not Assigned"
-    ).strip()
-
-
-    branch = request.form.get(
-        "branch",
-        "Not Assigned"
-    ).strip()
-
-
-    officer = request.form.get(
-        "officer",
-        "Not Assigned"
-    ).strip()
-
-
-    status = request.form.get(
-        "status",
-        "Pending"
-    ).strip()
-
-
-    allowed_statuses = [
-        "Submitted",
-        "Pending",
-        "In Progress",
-        "Resolved"
-    ]
-
-
-    if status not in allowed_statuses:
-
-        status = "Pending"
-
-
-    conn = get_db()
-
-
-    # -----------------------------------------------------
-    # GET OFFICER DEPARTMENT / BRANCH
-    # -----------------------------------------------------
-
-    if officer != "Not Assigned":
-
-        selected_officer = conn.execute("""
-            SELECT *
-            FROM officers
-            WHERE name = ?
-            ORDER BY id DESC
-            LIMIT 1
-        """, (
-            officer,
-        )).fetchone()
-
-
-        if selected_officer is not None:
-
-            department = selected_officer[
-                "department"
-            ]
-
-            branch = selected_officer[
-                "branch"
-            ]
-
-
-    # -----------------------------------------------------
-    # UPDATE COMPLAINT
-    # -----------------------------------------------------
-
-    conn.execute("""
-        UPDATE complaints
-
-        SET
-            department = ?,
-            branch = ?,
-            officer = ?,
-            status = ?
-
-        WHERE id = ?
-
-    """, (
-
-        department,
-        branch,
-        officer,
-        status,
-        complaint_id
-
-    ))
-
-
-    conn.commit()
-
-    conn.close()
-
-
-    return redirect(
-        url_for(
-            "admin_dashboard"
-        )
-    )
-
-
-# =========================================================
-# ADMIN UPDATE COMPLAINT
-# =========================================================
-
-@app.route(
-    "/admin/complaint/<int:complaint_id>/update",
-    methods=["POST"]
-)
-def admin_update_complaint(
-    complaint_id
-):
-
-    if not admin_required():
-
-        return redirect(
-            url_for(
-                "admin_login"
-            )
-        )
-
-
-    department = request.form.get(
-        "department",
-        "Not Assigned"
-    ).strip()
-
-
-    branch = request.form.get(
-        "branch",
-        "Not Assigned"
-    ).strip()
-
-
-    officer = request.form.get(
-        "officer",
-        "Not Assigned"
-    ).strip()
-
-
-    status = request.form.get(
-        "status",
-        "Submitted"
-    ).strip()
-
-
-    allowed_statuses = [
-        "Submitted",
-        "Pending",
-        "In Progress",
-        "Resolved"
-    ]
-
-
-    if status not in allowed_statuses:
-
-        return "Invalid status", 400
-
-
-    conn = get_db()
-
-
-    # -----------------------------------------------------
-    # GET OFFICER DEPARTMENT / BRANCH
-    # -----------------------------------------------------
-
-    if officer != "Not Assigned":
-
-        selected_officer = conn.execute("""
-            SELECT *
-            FROM officers
-            WHERE name = ?
-            ORDER BY id DESC
-            LIMIT 1
-        """, (
-            officer,
-        )).fetchone()
-
-
-        if selected_officer is not None:
-
-            department = selected_officer[
-                "department"
-            ]
-
-            branch = selected_officer[
-                "branch"
-            ]
-
-
-    # -----------------------------------------------------
-    # UPDATE
-    # -----------------------------------------------------
-
-    conn.execute("""
-        UPDATE complaints
-
-        SET
-            department = ?,
-            branch = ?,
-            officer = ?,
-            status = ?
-
-        WHERE id = ?
-
-    """, (
-
-        department,
-        branch,
-        officer,
-        status,
-        complaint_id
-
-    ))
-
-
-    conn.commit()
-
-    conn.close()
-
-
-    return redirect(
-        url_for(
-            "admin_dashboard"
-        )
-    )
-
-
-# =========================================================
-# ADMIN STATUS ONLY UPDATE
-# =========================================================
-
-@app.route(
-    "/admin/complaint/<int:complaint_id>/status",
-    methods=["POST"]
-)
-def admin_update_status(
-    complaint_id
-):
-
-    if not admin_required():
-
-        return redirect(
-            url_for(
-                "admin_login"
-            )
-        )
-
-
-    status = request.form.get(
-        "status",
-        ""
-    ).strip()
-
-
-    allowed_statuses = [
-        "Submitted",
-        "Pending",
-        "In Progress",
-        "Resolved"
-    ]
-
-
-    if status not in allowed_statuses:
-
-        return "Invalid status", 400
-
-
-    conn = get_db()
-
-
-    conn.execute("""
-        UPDATE complaints
-
-        SET status = ?
-
-        WHERE id = ?
-
-    """, (
-
-        status,
-        complaint_id
-
-    ))
-
-
-    conn.commit()
-
-    conn.close()
-
-
-    return redirect(
-        url_for(
-            "admin_dashboard"
-        )
-    )
-
-
-# =========================================================
-# OFFICER LOGIN
-# =========================================================
-
-@app.route(
-    "/officer/login",
-    methods=["GET", "POST"]
-)
-def officer_login():
-
-    error = None
-
-
-    if request.method == "POST":
-
-        officer_id = request.form.get(
-            "officer_id",
-            ""
-        ).strip()
-
-
-        mobile = request.form.get(
-            "mobile",
-            ""
-        ).strip()
-
-
-        if not officer_id or not mobile:
-
-            error = (
-                "Officer ID and Mobile Number "
-                "are required."
-            )
-
-
-        else:
-
-            conn = get_db()
-
-
-            officer = conn.execute("""
-                SELECT *
-                FROM officers
-
-                WHERE id = ?
-                AND mobile = ?
-                AND status = 'Active'
-
-            """, (
-
-                officer_id,
-                mobile
-
-            )).fetchone()
-
-
-            conn.close()
-
-
-            if officer:
-
-                session[
-                    "officer_logged_in"
-                ] = True
-
-
-                session[
-                    "officer_id"
-                ] = officer["id"]
-
-
-                return redirect(
-                    url_for(
-                        "officer_dashboard",
-                        officer_id=officer["id"]
-                    )
-                )
-
-
-            else:
-
-                error = (
-                    "Invalid Officer ID "
-                    "or Mobile Number."
-                )
-
-
-    return render_template(
-        "officer_login.html",
-        error=error
-    )
-
-
-# =========================================================
-# OFFICER LOGOUT
-# =========================================================
-
-@app.route(
-    "/officer/logout"
-)
-def officer_logout():
-
-    session.pop(
-        "officer_logged_in",
-        None
-    )
-
-    session.pop(
-        "officer_id",
-        None
-    )
-
-
-    return redirect(
-        url_for(
-            "officer_login"
-        )
-    )
-
-
-# =========================================================
-# OFFICER DASHBOARD
-# =========================================================
-
-@app.route(
-    "/officer/<int:officer_id>"
-)
-def officer_dashboard(
-    officer_id
-):
-
-    # -----------------------------------------------------
-    # LOGIN CHECK
-    # -----------------------------------------------------
-
-    if not session.get(
-        "officer_logged_in"
-    ):
-
-        return redirect(
-            url_for(
-                "officer_login"
-            )
-        )
-
-
-    # -----------------------------------------------------
-    # ACCESS CHECK
-    # -----------------------------------------------------
-
-    if session.get(
-        "officer_id"
-    ) != officer_id:
-
-        return "Access denied", 403
-
-
-    conn = get_db()
-
-
-    # -----------------------------------------------------
-    # FIND OFFICER
-    # -----------------------------------------------------
-
-    officer = conn.execute("""
-        SELECT *
-        FROM officers
-        WHERE id = ?
-    """, (
-        officer_id,
-    )).fetchone()
-
-
-    if officer is None:
-
-        conn.close()
-
-        return "Officer not found", 404
-
-
-    # -----------------------------------------------------
-    # FIND ASSIGNED COMPLAINTS
-    # -----------------------------------------------------
-
-    complaints = conn.execute("""
-        SELECT *
-        FROM complaints
-        WHERE officer = ?
-        ORDER BY id DESC
-    """, (
-        officer["name"],
-    )).fetchall()
-
-
-    # -----------------------------------------------------
-    # STATISTICS
-    # -----------------------------------------------------
-
-    total_assigned = len(
-        complaints
-    )
-
-
-    submitted = sum(
-        1
-        for c in complaints
-        if c["status"] == "Submitted"
-    )
-
-
-    pending = sum(
-        1
-        for c in complaints
-        if c["status"] == "Pending"
-    )
-
-
-    in_progress = sum(
-        1
-        for c in complaints
-        if c["status"] == "In Progress"
-    )
-
-
-    resolved = sum(
-        1
-        for c in complaints
-        if c["status"] == "Resolved"
-    )
-
-
-    # -----------------------------------------------------
-    # PRIORITY STATISTICS
-    # -----------------------------------------------------
-
-    critical = sum(
-        1
-        for c in complaints
-        if c["priority"] == "Critical"
-    )
-
-
-    high = sum(
-        1
-        for c in complaints
-        if c["priority"] == "High"
-    )
-
-
-    medium = sum(
-        1
-        for c in complaints
-        if c["priority"] == "Medium"
-    )
-
-
-    low = sum(
-        1
-        for c in complaints
-        if c["priority"] == "Low"
-    )
-
-
-    conn.close()
-
-
-    return render_template(
-
-        "officer_dashboard.html",
-
-        officer=officer,
-
-        complaints=complaints,
-
-        total_assigned=total_assigned,
-
-        submitted=submitted,
-
-        pending=pending,
-
-        in_progress=in_progress,
-
-        resolved=resolved,
-
-        critical=critical,
-
-        high=high,
-
-        medium=medium,
-
-        low=low,
-
-        success=None
-
-    )
-
-
-# =========================================================
-# OFFICER UPDATE COMPLAINT STATUS
-# =========================================================
-
-@app.route(
-    "/officer/<int:officer_id>/complaint/<int:complaint_id>/update",
-    methods=["POST"]
-)
-def officer_update_complaint(
-    officer_id,
-    complaint_id
-):
-
-    # -----------------------------------------------------
-    # LOGIN CHECK
-    # -----------------------------------------------------
-
-    if not session.get(
-        "officer_logged_in"
-    ):
-
-        return redirect(
-            url_for(
-                "officer_login"
-            )
-        )
-
-
-    # -----------------------------------------------------
-    # ACCESS CHECK
-    # -----------------------------------------------------
-
-    if session.get(
-        "officer_id"
-    ) != officer_id:
-
-        return "Access denied", 403
-
-
-    # -----------------------------------------------------
-    # NEW STATUS
-    # -----------------------------------------------------
-
-    new_status = request.form.get(
-        "status",
-        ""
-    ).strip()
-
-
-    allowed_statuses = [
-        "Submitted",
-        "Pending",
-        "In Progress",
-        "Resolved"
-    ]
-
-
-    if new_status not in allowed_statuses:
-
-        return "Invalid status", 400
-
-
-    conn = get_db()
-
-
-    # -----------------------------------------------------
-    # FIND OFFICER
-    # -----------------------------------------------------
-
-    officer = conn.execute("""
-        SELECT *
-        FROM officers
-        WHERE id = ?
-    """, (
-        officer_id,
-    )).fetchone()
-
-
-    if officer is None:
-
-        conn.close()
-
-        return "Officer not found", 404
-
-
-    # -----------------------------------------------------
-    # CHECK COMPLAINT
-    # -----------------------------------------------------
-
-    complaint = conn.execute("""
-        SELECT *
-        FROM complaints
-
-        WHERE id = ?
-        AND officer = ?
-
-    """, (
-
-        complaint_id,
-        officer["name"]
-
-    )).fetchone()
-
-
-    if complaint is None:
-
-        conn.close()
-
-        return (
-            "Complaint is not assigned "
-            "to this officer"
-        ), 403
-
-
-    # -----------------------------------------------------
-    # UPDATE STATUS
-    # -----------------------------------------------------
-
-    conn.execute("""
-        UPDATE complaints
-
-        SET status = ?
-
-        WHERE id = ?
-        AND officer = ?
-
-    """, (
-
-        new_status,
-        complaint_id,
-        officer["name"]
-
-    ))
-
-
-    conn.commit()
-
-    conn.close()
-
-
-    return redirect(
-        url_for(
-            "officer_dashboard",
-            officer_id=officer_id
-        )
-    )
-
-
-# =========================================================
-# RUN APPLICATION
+# RUN LOCAL SERVER
 # =========================================================
 
 if __name__ == "__main__":
 
     app.run(
         host="0.0.0.0",
-        port=5000,
+        port=int(
+            os.environ.get(
+                "PORT",
+                5000
+            )
+        ),
         debug=True
     )
+
