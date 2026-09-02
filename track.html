@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Track Complaint - CivicReport</title>
+
+    <style>
+.status-badge {
+    display: inline-block;
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.status-resolved {
+    background: #22c55e;
+    color: white;
+}
+
+.status-pending {
+    background: #facc15;
+    color: #713f12;
+}
+
+.status-progress {
+    background: #3b82f6;
+    color: white;
+}
+
+.status-submitted {
+    background: #9ca3af;
+    color: white;
+}
+
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: #f4f7fb;
+            color: #222;
+        }
+
+        header {
+            background: #123c69;
+            color: white;
+            padding: 20px 8%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            margin: 0;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-left: 25px;
+        }
+
+        .container {
+            max-width: 850px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        .box {
+            background: white;
+            padding: 35px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        form {
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+            padding: 14px;
+            border: 1px solid #ccc;
+            border-radius: 7px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 14px 25px;
+            border: none;
+            border-radius: 7px;
+            background: #123c69;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .error {
+            margin-top: 20px;
+            padding: 15px;
+            background: #ffe5e5;
+            color: #b00020;
+            border-radius: 7px;
+        }
+
+        .details {
+            margin-top: 30px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 14px 5px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .label {
+            font-weight: bold;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 20px;
+            background: #fff3cd;
+            color: #856404;
+            font-weight: bold;
+        }
+
+        .timeline {
+            margin-top: 35px;
+        }
+
+        .timeline-item {
+            padding: 12px 0;
+        }
+
+        .success {
+            color: #16803c;
+        }
+
+        .pending {
+            color: #d97706;
+        }
+
+        @media (max-width: 650px) {
+
+            header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            nav a {
+                margin: 8px;
+            }
+
+            form {
+                flex-direction: column;
+            }
+
+            .row {
+                flex-direction: column;
+                gap: 5px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<header>
+
+    <h1>🚨 CivicReport</h1>
+
+    <nav>
+        <a href="/">Home</a>
+        <a href="/report">Report Problem</a>
+        <a href="/track">Track Complaint</a>
+    </nav>
+
+</header>
+
+
+<div class="container">
+
+    <div class="box">
+
+        <h2>🔎 Track Your Complaint</h2>
+
+        <p class="subtitle">
+            Enter your Complaint ID to see the latest status.
+        </p>
+
+
+        <form method="POST">
+
+            <input
+                type="text"
+                name="complaint_id"
+                placeholder="Example: CIVIC-2026-A7F3B2"
+                required
+            >
+
+            <button type="submit">
+                🔎 Track
+            </button>
+
+        </form>
+
+
+        {% if error %}
+
+        <div class="error">
+            ❌ {{ error }}
+        </div>
+
+        {% endif %}
+
+
+        {% if complaint %}
+
+        <div class="details">
+
+            <h3>Complaint Details</h3>
+
+
+            <div class="row">
+                <span class="label">Complaint ID</span>
+                <span>{{ complaint["complaint_id"] }}</span>
+            </div>
+
+
+            <div class="row">
+                <span class="label">Problem Type</span>
+                <span>{{ complaint["problem_type"] }}</span>
+            </div>
+
+
+            <div class="row">
+                <span class="label">Location</span>
+                <span>
+                    {{ complaint["latitude"] }},
+                    {{ complaint["longitude"] }}
+                </span>
+            </div>
+
+
+            <div class="row">
+                <span class="label">Area</span>
+                <span>{{ complaint["address"] }}</span>
+            </div>
+
+
+            <div class="row">
+                <span class="label">Submitted</span>
+                <span>{{ complaint["created_at"] }}</span>
+            </div>
+
+
+            <div class="row">
+                <span class="label">Status</span>
+
+                <span class="status">
+                    {% if complaint["status"] == "Resolved" %}
+    <span class="status-badge status-resolved">🟢 Resolved</span>
+{% elif complaint["status"] == "Pending" %}
+    <span class="status-badge status-pending">🟡 Pending</span>
+{% elif complaint["status"] == "In Progress" %}
+    <span class="status-badge status-progress">🔵 In Progress</span>
+{% else %}
+    <span class="status-badge status-submitted">⚪ Submitted</span>
+{% endif %}
+                </span>
+
+            </div>
+
+
+            <div class="row">
+                <span class="label">Department</span>
+                <span>{{ complaint["department"] }}</span>
+            </div>
+
+
+            <div class="row">
+                <span class="label">Branch</span>
+                <span>{{ complaint["branch"] }}</span>
+            </div>
+
+
+            <div class="row">
+                <span class="label">Responsible Officer</span>
+                <span>{{ complaint["officer"] }}</span>
+            </div>
+
+
+            <div class="row">
+                <span class="label">Description</span>
+                <span>{{ complaint["description"] }}</span>
+            </div>
+
+
+            <div class="timeline">
+
+                <h3>Complaint Progress</h3>
+
+                <div class="timeline-item success">
+                    ✅ Complaint Submitted
+                </div>
+
+                <div class="timeline-item pending">
+                    🔵 Department Assignment
+                </div>
+
+                <div class="timeline-item pending">
+                    🟠 Inspection / Action
+                </div>
+
+                <div class="timeline-item pending">
+                    🟢 Resolution
+                </div>
+
+            </div>
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+
+<footer style="
+    text-align:center;
+    background:#123c69;
+    color:white;
+    padding:25px;
+    margin-top:40px;
+">
+
+    © 2026 CivicReport — Public Infrastructure Complaint System
+
+</footer>
+
+</body>
+
+</html>
