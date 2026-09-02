@@ -1,9 +1,7 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
 
     <meta
@@ -15,25 +13,19 @@
         Admin Dashboard - CivicReport
     </title>
 
-
     <style>
 
         * {
             box-sizing: border-box;
         }
 
-
         body {
-
             margin: 0;
-
             font-family:
                 Arial,
                 Helvetica,
                 sans-serif;
-
             background: #f4f7fb;
-
             color: #1f2937;
         }
 
@@ -43,55 +35,34 @@
         ========================================= */
 
         .header {
-
             background: #172554;
-
             color: white;
-
             padding: 18px 30px;
-
             display: flex;
-
             justify-content: space-between;
-
             align-items: center;
-
             box-shadow:
                 0 3px 10px
                 rgba(0,0,0,0.15);
-
             position: sticky;
-
             top: 0;
-
             z-index: 1000;
         }
 
-
         .header-left h1 {
-
             margin: 0;
-
             font-size: 24px;
         }
 
-
         .header-left p {
-
             margin: 5px 0 0;
-
             color: #dbeafe;
-
             font-size: 14px;
         }
 
-
         .header-right {
-
             display: flex;
-
             align-items: center;
-
             gap: 15px;
         }
 
@@ -101,238 +72,139 @@
         ========================================= */
 
         .notification-wrapper {
-
             position: relative;
         }
-
 
         .notification-button {
-
             width: 46px;
-
             height: 46px;
-
             border: none;
-
             border-radius: 50%;
-
             background: #1e3a8a;
-
             color: white;
-
             font-size: 22px;
-
             cursor: pointer;
-
             position: relative;
         }
 
-
         .notification-button:hover {
-
             background: #2563eb;
         }
 
-
         .notification-badge {
-
             position: absolute;
-
             top: -4px;
-
             right: -4px;
-
             min-width: 21px;
-
             height: 21px;
-
             padding: 2px 5px;
-
             background: #dc2626;
-
             color: white;
-
             border-radius: 50%;
-
             font-size: 11px;
-
             font-weight: bold;
-
             display: flex;
-
             align-items: center;
-
             justify-content: center;
-
             border: 2px solid white;
         }
 
-
         .notification-panel {
-
             display: none;
-
             position: absolute;
-
             top: 58px;
-
             right: 0;
-
             width: 360px;
-
             max-width: 90vw;
-
             background: white;
-
             color: #111827;
-
             border-radius: 12px;
-
             box-shadow:
                 0 10px 35px
                 rgba(0,0,0,0.2);
-
             overflow: hidden;
-
             z-index: 2000;
         }
 
-
         .notification-panel.show {
-
             display: block;
         }
 
-
         .notification-header {
-
             padding: 15px;
-
             background: #172554;
-
             color: white;
-
             display: flex;
-
             justify-content: space-between;
-
             align-items: center;
         }
 
-
         .notification-header h3 {
-
             margin: 0;
-
             font-size: 16px;
         }
 
-
         .notification-header span {
-
             font-size: 12px;
-
             background: #dc2626;
-
             padding: 4px 8px;
-
             border-radius: 12px;
         }
 
-
         .notification-list {
-
             max-height: 350px;
-
             overflow-y: auto;
         }
 
-
         .notification-item {
-
             display: block;
-
             padding: 14px;
-
             border-bottom: 1px solid #e5e7eb;
-
             text-decoration: none;
-
             color: #111827;
-
             transition: 0.2s;
-
         }
 
-
         .notification-item:hover {
-
             background: #eff6ff;
         }
 
-
         .notification-item.new {
-
             border-left: 4px solid #dc2626;
-
             background: #fff7ed;
         }
 
-
         .notification-title {
-
             font-weight: bold;
-
             color: #1d4ed8;
-
             font-size: 13px;
-
             margin-bottom: 5px;
         }
 
-
         .notification-text {
-
             font-size: 12px;
-
             color: #4b5563;
-
             line-height: 1.5;
         }
 
-
         .notification-empty {
-
             padding: 30px 15px;
-
             text-align: center;
-
             color: #6b7280;
-
             font-size: 13px;
         }
 
-
         .mark-read {
-
             width: 100%;
-
             border: none;
-
             padding: 11px;
-
             background: #f1f5f9;
-
             cursor: pointer;
-
             font-weight: bold;
-
             color: #1d4ed8;
         }
 
-
         .mark-read:hover {
-
             background: #e2e8f0;
         }
 
@@ -342,23 +214,15 @@
         ========================================= */
 
         .logout {
-
             background: #dc2626;
-
             color: white;
-
             text-decoration: none;
-
             padding: 10px 18px;
-
             border-radius: 7px;
-
             font-weight: bold;
         }
 
-
         .logout:hover {
-
             background: #b91c1c;
         }
 
@@ -368,11 +232,8 @@
         ========================================= */
 
         .container {
-
             width: 95%;
-
-            max-width: 1600px;
-
+            max-width: 1700px;
             margin: 25px auto;
         }
 
@@ -382,55 +243,33 @@
         ========================================= */
 
         .new-alert {
-
             display: none;
-
             background: #fff7ed;
-
             border: 1px solid #fed7aa;
-
             color: #9a3412;
-
             padding: 15px 18px;
-
             border-radius: 10px;
-
             margin-bottom: 20px;
-
             font-weight: bold;
-
             box-shadow:
                 0 2px 8px
                 rgba(0,0,0,0.05);
         }
 
-
         .new-alert.show {
-
             display: flex;
-
             justify-content: space-between;
-
             align-items: center;
-
             gap: 15px;
         }
 
-
         .alert-button {
-
             border: none;
-
             background: #ea580c;
-
             color: white;
-
             padding: 8px 13px;
-
             border-radius: 6px;
-
             cursor: pointer;
-
             font-weight: bold;
         }
 
@@ -440,78 +279,50 @@
         ========================================= */
 
         .stats {
-
             display: grid;
-
             grid-template-columns:
                 repeat(5, 1fr);
-
             gap: 15px;
-
             margin-bottom: 25px;
         }
 
-
         .stat-card {
-
             background: white;
-
             border-radius: 12px;
-
             padding: 20px;
-
             box-shadow:
                 0 3px 12px
                 rgba(0,0,0,0.08);
-
             text-align: center;
-
             border-left: 5px solid #2563eb;
         }
 
-
         .stat-card h3 {
-
             margin: 0;
-
             color: #6b7280;
-
             font-size: 14px;
         }
 
-
         .number {
-
             margin-top: 10px;
-
             font-size: 30px;
-
             font-weight: bold;
-
             color: #111827;
         }
 
-
         .submitted {
-
             border-left-color: #f59e0b;
         }
 
-
         .pending {
-
             border-left-color: #f97316;
         }
 
-
         .progress {
-
             border-left-color: #2563eb;
         }
 
-
         .resolved {
-
             border-left-color: #16a34a;
         }
 
@@ -521,65 +332,40 @@
         ========================================= */
 
         .section {
-
             background: white;
-
             border-radius: 12px;
-
             padding: 22px;
-
             margin-bottom: 25px;
-
             box-shadow:
                 0 3px 12px
                 rgba(0,0,0,0.08);
         }
 
-
         .section-header {
-
             display: flex;
-
             justify-content: space-between;
-
             align-items: center;
-
             margin-bottom: 18px;
-
             gap: 15px;
         }
 
-
         .section-header h2 {
-
             margin: 0;
-
             font-size: 21px;
-
             color: #172554;
         }
 
-
         .manage-btn {
-
             background: #2563eb;
-
             color: white;
-
             text-decoration: none;
-
             padding: 10px 16px;
-
             border-radius: 7px;
-
             font-weight: bold;
-
             white-space: nowrap;
         }
 
-
         .manage-btn:hover {
-
             background: #1d4ed8;
         }
 
@@ -589,73 +375,125 @@
         ========================================= */
 
         .table-wrapper {
-
             width: 100%;
-
             overflow-x: auto;
         }
 
-
         table {
-
             width: 100%;
-
             border-collapse: collapse;
-
-            min-width: 1400px;
+            min-width: 1750px;
         }
 
-
         th {
-
             background: #172554;
-
             color: white;
-
             padding: 12px 10px;
-
             text-align: left;
-
             font-size: 13px;
-
             white-space: nowrap;
         }
 
-
         td {
-
             border-bottom:
                 1px solid #e5e7eb;
-
             padding: 12px 10px;
-
             font-size: 13px;
-
             vertical-align: top;
         }
 
-
         tr:hover td {
-
             background: #f8fafc;
         }
 
-
         .complaint-id {
-
             font-weight: bold;
-
             color: #1d4ed8;
-
             white-space: nowrap;
         }
 
-
         .description {
-
             max-width: 220px;
-
             line-height: 1.5;
+        }
+
+
+        /* =========================================
+           AI ANALYSIS
+        ========================================= */
+
+        .ai-problem {
+            font-weight: bold;
+            color: #4338ca;
+            line-height: 1.5;
+            min-width: 150px;
+        }
+
+        .ai-label {
+            display: block;
+            font-size: 11px;
+            color: #6b7280;
+            margin-bottom: 4px;
+            font-weight: normal;
+        }
+
+        .severity-score {
+            display: inline-block;
+            min-width: 65px;
+            padding: 7px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            text-align: center;
+            background: #eef2ff;
+            color: #3730a3;
+        }
+
+        .severity-high {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .severity-medium {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .severity-low {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .priority-badge {
+            display: inline-block;
+            padding: 7px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .priority-critical {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .priority-high {
+            background: #ffedd5;
+            color: #c2410c;
+            border: 1px solid #fed7aa;
+        }
+
+        .priority-medium {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+
+        .priority-low {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
         }
 
 
@@ -664,49 +502,31 @@
         ========================================= */
 
         .badge {
-
             display: inline-block;
-
             padding: 6px 10px;
-
             border-radius: 20px;
-
             font-size: 12px;
-
             font-weight: bold;
-
             white-space: nowrap;
         }
 
-
         .badge-submitted {
-
             background: #fef3c7;
-
             color: #92400e;
         }
 
-
         .badge-pending {
-
             background: #ffedd5;
-
             color: #9a3412;
         }
 
-
         .badge-progress {
-
             background: #dbeafe;
-
             color: #1e40af;
         }
 
-
         .badge-resolved {
-
             background: #dcfce7;
-
             color: #166534;
         }
 
@@ -716,58 +536,36 @@
         ========================================= */
 
         .update-box {
-
             min-width: 300px;
         }
 
-
         .update-form {
-
             display: flex;
-
             flex-direction: column;
-
             gap: 8px;
         }
 
-
         .update-form select {
-
             width: 100%;
-
             padding: 9px;
-
             border:
                 1px solid #cbd5e1;
-
             border-radius: 6px;
-
             background: white;
-
             font-size: 13px;
         }
 
-
         .update-btn {
-
             border: none;
-
             background: #16a34a;
-
             color: white;
-
             padding: 10px;
-
             border-radius: 6px;
-
             cursor: pointer;
-
             font-weight: bold;
         }
 
-
         .update-btn:hover {
-
             background: #15803d;
         }
 
@@ -777,27 +575,18 @@
         ========================================= */
 
         .evidence-link {
-
             display: block;
-
             margin-bottom: 6px;
-
             color: #2563eb;
-
             text-decoration: none;
-
             font-weight: bold;
         }
 
-
         .evidence-link:hover {
-
             text-decoration: underline;
         }
 
-
         .no-evidence {
-
             color: #6b7280;
         }
 
@@ -807,23 +596,16 @@
         ========================================= */
 
         .officer-table {
-
             min-width: 800px;
         }
 
-
         .active {
-
             color: #166534;
-
             font-weight: bold;
         }
 
-
         .inactive {
-
             color: #b91c1c;
-
             font-weight: bold;
         }
 
@@ -833,11 +615,8 @@
         ========================================= */
 
         .empty {
-
             text-align: center;
-
             padding: 35px;
-
             color: #6b7280;
         }
 
@@ -849,46 +628,36 @@
         @media (max-width: 1100px) {
 
             .stats {
-
                 grid-template-columns:
                     repeat(2, 1fr);
             }
 
             .header {
-
                 flex-wrap: wrap;
             }
         }
 
-
         @media (max-width: 600px) {
 
             .container {
-
                 width: 94%;
             }
 
             .stats {
-
                 grid-template-columns: 1fr;
             }
 
             .header {
-
                 padding: 15px;
-
                 align-items: flex-start;
             }
 
             .header-right {
-
                 width: 100%;
-
                 justify-content: space-between;
             }
 
             .notification-panel {
-
                 right: -50px;
             }
         }
@@ -906,7 +675,6 @@
 ===================================================== -->
 
 <header class="header">
-
 
     <div class="header-left">
 
@@ -965,9 +733,7 @@
                     </h3>
 
                     <span id="notificationCount">
-
                         {{ new_complaints|length }}
-
                     </span>
 
                 </div>
@@ -989,11 +755,8 @@
                         >
 
                             <div class="notification-title">
-
                                 🚨 New Complaint
-
                             </div>
-
 
                             <div class="notification-text">
 
@@ -1025,9 +788,7 @@
                     {% else %}
 
                         <div class="notification-empty">
-
                             ✅ No new complaints
-
                         </div>
 
                     {% endif %}
@@ -1040,9 +801,7 @@
                     class="mark-read"
                     onclick="markNotificationsRead()"
                 >
-
                     Mark notifications as read
-
                 </button>
 
             </div>
@@ -1056,9 +815,7 @@
             href="{{ url_for('admin_logout') }}"
             class="logout"
         >
-
             Logout
-
         </a>
 
     </div>
@@ -1080,20 +837,15 @@
 >
 
     <span id="newComplaintAlertText">
-
         🚨 New complaint received!
-
     </span>
-
 
     <button
         type="button"
         class="alert-button"
         onclick="reloadDashboard()"
     >
-
         Refresh Dashboard
-
     </button>
 
 </div>
@@ -1114,9 +866,7 @@
         </h3>
 
         <div class="number">
-
             {{ total_complaints }}
-
         </div>
 
     </div>
@@ -1132,9 +882,7 @@
             class="number"
             id="submittedCount"
         >
-
             {{ submitted_complaints }}
-
         </div>
 
     </div>
@@ -1147,9 +895,7 @@
         </h3>
 
         <div class="number">
-
             {{ pending_complaints }}
-
         </div>
 
     </div>
@@ -1162,9 +908,7 @@
         </h3>
 
         <div class="number">
-
             {{ in_progress_complaints }}
-
         </div>
 
     </div>
@@ -1177,9 +921,7 @@
         </h3>
 
         <div class="number">
-
             {{ resolved_complaints }}
-
         </div>
 
     </div>
@@ -1200,11 +942,8 @@
 
     <div class="section-header">
 
-
         <h2>
-
             📋 All Public Complaints
-
         </h2>
 
 
@@ -1212,9 +951,7 @@
             href="{{ url_for('officer_management') }}"
             class="manage-btn"
         >
-
             👮 Officer Management
-
         </a>
 
     </div>
@@ -1244,6 +981,18 @@
 
                     <th>
                         Problem
+                    </th>
+
+                    <th>
+                        🤖 AI Problem
+                    </th>
+
+                    <th>
+                        📊 Severity
+                    </th>
+
+                    <th>
+                        🚨 Priority
                     </th>
 
                     <th>
@@ -1314,9 +1063,7 @@
                     <td>
 
                         <strong>
-
                             {{ complaint["name"] }}
-
                         </strong>
 
                         <br>
@@ -1343,10 +1090,92 @@
                     <td>
 
                         <strong>
-
                             {{ complaint["problem_type"] }}
-
                         </strong>
+
+                    </td>
+
+
+
+                    <!-- AI PROBLEM -->
+
+                    <td>
+
+                        <div class="ai-problem">
+
+                            <span class="ai-label">
+                                AI Classification
+                            </span>
+
+                            🤖
+                            {{ complaint["ai_problem"] or "Not Analyzed" }}
+
+                        </div>
+
+                    </td>
+
+
+
+                    <!-- SEVERITY -->
+
+                    <td>
+
+                        {% set score = complaint["severity_score"]|int %}
+
+
+                        {% if score >= 80 %}
+
+                            <span class="severity-score severity-high">
+                                {{ score }}/100
+                            </span>
+
+                        {% elif score >= 50 %}
+
+                            <span class="severity-score severity-medium">
+                                {{ score }}/100
+                            </span>
+
+                        {% else %}
+
+                            <span class="severity-score severity-low">
+                                {{ score }}/100
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+
+
+                    <!-- PRIORITY -->
+
+                    <td>
+
+                        {% if complaint["priority"] == "Critical" %}
+
+                            <span class="priority-badge priority-critical">
+                                🚨 Critical
+                            </span>
+
+                        {% elif complaint["priority"] == "High" %}
+
+                            <span class="priority-badge priority-high">
+                                🔴 High
+                            </span>
+
+                        {% elif complaint["priority"] == "Medium" %}
+
+                            <span class="priority-badge priority-medium">
+                                🟠 Medium
+                            </span>
+
+                        {% else %}
+
+                            <span class="priority-badge priority-low">
+                                🟢 Low
+                            </span>
+
+                        {% endif %}
 
                     </td>
 
@@ -1468,9 +1297,7 @@
                         {% else %}
 
                             <span class="no-evidence">
-
                                 Not Assigned
-
                             </span>
 
                         {% endif %}
@@ -1491,9 +1318,7 @@
                         {% else %}
 
                             <span class="no-evidence">
-
                                 Not Assigned
-
                             </span>
 
                         {% endif %}
@@ -1514,9 +1339,7 @@
                         {% else %}
 
                             <span class="no-evidence">
-
                                 Not Assigned
-
                             </span>
 
                         {% endif %}
@@ -1627,9 +1450,7 @@
                                     selected
                                     {% endif %}
                                 >
-
                                     Not Assigned
-
                                 </option>
 
 
@@ -1640,9 +1461,7 @@
                                     selected
                                     {% endif %}
                                 >
-
                                     Roads & Engineering
-
                                 </option>
 
 
@@ -1653,9 +1472,7 @@
                                     selected
                                     {% endif %}
                                 >
-
                                     Electrical
-
                                 </option>
 
 
@@ -1666,9 +1483,7 @@
                                     selected
                                     {% endif %}
                                 >
-
                                     Drainage
-
                                 </option>
 
 
@@ -1679,9 +1494,7 @@
                                     selected
                                     {% endif %}
                                 >
-
                                     Water Supply
-
                                 </option>
 
                             </select>
@@ -1702,9 +1515,7 @@
                                     selected
                                     {% endif %}
                                 >
-
                                     Not Assigned
-
                                 </option>
 
 
@@ -1715,9 +1526,7 @@
                                     selected
                                     {% endif %}
                                 >
-
                                     North Branch
-
                                 </option>
 
 
@@ -1728,9 +1537,7 @@
                                     selected
                                     {% endif %}
                                 >
-
                                     South Branch
-
                                 </option>
 
 
@@ -1741,9 +1548,7 @@
                                     selected
                                     {% endif %}
                                 >
-
                                     Central Branch
-
                                 </option>
 
                             </select>
@@ -1757,7 +1562,6 @@
                                 class="officer-select"
                             >
 
-
                                 <option
                                     value="Not Assigned"
                                     {% if complaint["officer"]
@@ -1765,11 +1569,8 @@
                                     selected
                                     {% endif %}
                                 >
-
                                     Not Assigned
-
                                 </option>
-
 
 
                                 {% for officer in officers %}
@@ -1779,12 +1580,9 @@
                                     value="{{ officer['name'] }}"
                                     data-department="{{ officer['department'] }}"
                                     data-branch="{{ officer['branch'] }}"
-
                                     {% if complaint["officer"]
                                           == officer["name"] %}
-
                                     selected
-
                                     {% endif %}
                                 >
 
@@ -1813,9 +1611,7 @@
                                     selected
                                     {% endif %}
                                 >
-
                                     Submitted
-
                                 </option>
 
 
@@ -1826,9 +1622,7 @@
                                     selected
                                     {% endif %}
                                 >
-
                                     Pending
-
                                 </option>
 
 
@@ -1839,9 +1633,7 @@
                                     selected
                                     {% endif %}
                                 >
-
                                     In Progress
-
                                 </option>
 
 
@@ -1852,11 +1644,8 @@
                                     selected
                                     {% endif %}
                                 >
-
                                     Resolved
-
                                 </option>
-
 
                             </select>
 
@@ -1873,11 +1662,9 @@
 
                             </button>
 
-
                         </form>
 
                     </td>
-
 
                 </tr>
 
@@ -1887,9 +1674,7 @@
 
             </tbody>
 
-
         </table>
-
 
     </div>
 
@@ -1928,9 +1713,7 @@
 
 
         <h2>
-
             👮 Officers
-
         </h2>
 
 
@@ -1938,11 +1721,8 @@
             href="{{ url_for('add_officer') }}"
             class="manage-btn"
         >
-
             ➕ Add Officer
-
         </a>
-
 
     </div>
 
@@ -1998,7 +1778,6 @@
             </thead>
 
 
-
             <tbody>
 
 
@@ -2009,41 +1788,31 @@
 
 
                     <td>
-
                         {{ officer["id"] }}
-
                     </td>
 
 
                     <td>
 
                         <strong>
-
                             {{ officer["name"] }}
-
                         </strong>
 
                     </td>
 
 
                     <td>
-
                         {{ officer["department"] }}
-
                     </td>
 
 
                     <td>
-
                         {{ officer["branch"] }}
-
                     </td>
 
 
                     <td>
-
                         {{ officer["mobile"] }}
-
                     </td>
 
 
@@ -2055,9 +1824,7 @@
 
 
                         <span class="active">
-
                             ● Active
-
                         </span>
 
 
@@ -2120,7 +1887,6 @@
 
                     </td>
 
-
                 </tr>
 
 
@@ -2129,9 +1895,7 @@
 
             </tbody>
 
-
         </table>
-
 
     </div>
 
@@ -2156,6 +1920,7 @@
 
 
 </div>
+
 
 
 </div>
@@ -2208,7 +1973,6 @@ document.addEventListener(
             document.getElementById(
                 "notificationPanel"
             );
-
 
         if (
             wrapper &&
@@ -2740,11 +2504,9 @@ document.addEventListener(
     }
 );
 
-
 </script>
 
 
 </body>
 
 </html>
-```
