@@ -23,9 +23,7 @@ app = Flask(__name__, template_folder=".")
 
 app.secret_key = "CHANGE_THIS_TO_A_STRONG_SECRET_KEY"
 
-BASE_DIR = os.path.dirname(
-    os.path.abspath(__file__)
-)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DATABASE = os.path.join(
     BASE_DIR,
@@ -58,6 +56,238 @@ def get_db():
     conn.row_factory = sqlite3.Row
 
     return conn
+
+
+# =========================================================
+# AI COMPLAINT ANALYZER
+# =========================================================
+
+def analyze_complaint(problem_type, description):
+
+    problem = (
+        (problem_type or "") + " " +
+        (description or "")
+    ).lower()
+
+    score = 0
+
+    # -----------------------------------------------------
+    # PROBLEM TYPE / KEYWORDS
+    # -----------------------------------------------------
+
+    critical_words = [
+        "bridge collapse",
+        "road collapse",
+        "collapsed",
+        "accident",
+        "dangerous",
+        "life threatening",
+        "life-threatening",
+        "major accident",
+        "landslide",
+        "flooded road",
+        "road completely broken"
+    ]
+
+    high_words = [
+        "large pothole",
+        "big pothole",
+        "deep pothole",
+        "huge pothole",
+        "large crack",
+        "deep crack",
+        "broken road",
+        "damaged road",
+        "road damage",
+        "danger",
+        "unsafe",
+        "traffic problem",
+        "waterlogging",
+        "blocked road"
+    ]
+
+    medium_words = [
+        "pothole",
+        "crack",
+        "broken",
+        "damaged",
+        "street light",
+        "drain",
+        "drainage",
+        "garbage",
+        "water leak",
+        "leakage",
+        "footpath",
+        "sidewalk"
+    ]
+
+    low_words = [
+        "small crack",
+        "minor",
+        "light damage",
+        "slight damage",
+        "dirty",
+        "cleaning",
+        "maintenance"
+    ]
+
+    # -----------------------------------------------------
+    # SCORE
+    # -----------------------------------------------------
+
+    for word in critical_words:
+
+        if word in problem:
+            score += 30
+
+    for word in high_words:
+
+        if word in problem:
+            score += 20
+
+    for word in medium_words:
+
+        if word in problem:
+            score += 12
+
+    for word in low_words:
+
+        if word in problem:
+            score += 5
+
+
+    # -----------------------------------------------------
+    # PROBLEM TYPE BASE SCORE
+    # -----------------------------------------------------
+
+    ptype = (problem_type or "").lower()
+
+    if "road" in ptype:
+        score += 20
+
+    if "pothole" in ptype:
+        score += 25
+
+    if "bridge" in ptype:
+        score += 30
+
+    if "accident" in ptype:
+        score += 35
+
+    if "electric" in ptype:
+        score += 15
+
+    if "street light" in ptype:
+        score += 10
+
+    if "drain" in ptype:
+        score += 15
+
+
+    # -----------------------------------------------------
+    # DESCRIPTION LENGTH / DETAILS
+    # -----------------------------------------------------
+
+    if len(description or "") > 100:
+        score += 5
+
+    if len(description or "") > 250:
+        score += 5
+
+
+    # -----------------------------------------------------
+    # LIMIT SCORE
+    # -----------------------------------------------------
+
+    score = min(score, 100)
+
+
+    # -----------------------------------------------------
+    # AI PROBLEM CLASSIFICATION
+    # -----------------------------------------------------
+
+    if (
+        "bridge" in problem
+        or "collapse" in problem
+        or "accident" in problem
+    ):
+
+        ai_problem = "Critical Infrastructure Damage"
+
+    elif (
+        "pothole" in problem
+        or "road" in problem
+        or "crack" in problem
+    ):
+
+        ai_problem = "Road Damage"
+
+    elif (
+        "electric" in problem
+        or "street light" in problem
+        or "light" in problem
+    ):
+
+        ai_problem = "Electrical Infrastructure"
+
+    elif (
+        "drain" in problem
+        or "water" in problem
+        or "waterlogging" in problem
+    ):
+
+        ai_problem = "Drainage / Water Issue"
+
+    elif (
+        "garbage" in problem
+        or "waste" in problem
+        or "dirty" in problem
+    ):
+
+        ai_problem = "Waste Management Issue"
+
+    elif (
+        "footpath" in problem
+        or "sidewalk" in problem
+    ):
+
+        ai_problem = "Footpath / Sidewalk Damage"
+
+    else:
+
+        ai_problem = (
+            problem_type
+            if problem_type
+            else "General Infrastructure Issue"
+        )
+
+
+    # -----------------------------------------------------
+    # PRIORITY
+    # -----------------------------------------------------
+
+    if score >= 80:
+
+        priority = "Critical"
+
+    elif score >= 60:
+
+        priority = "High"
+
+    elif score >= 30:
+
+        priority = "Medium"
+
+    else:
+
+        priority = "Low"
+
+
+    return (
+        ai_problem,
+        score,
+        priority
+    )
 
 
 # =========================================================
@@ -107,7 +337,13 @@ def init_db():
 
             officer TEXT DEFAULT 'Not Assigned',
 
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+
+            ai_problem TEXT DEFAULT 'Not Analyzed',
+
+            severity_score INTEGER DEFAULT 0,
+
+            priority TEXT DEFAULT 'Low'
 
         )
     """)
@@ -138,9 +374,48 @@ def init_db():
     """)
 
 
-    # -----------------------------------------------------
-    # DATABASE MIGRATION
-    # -----------------------------------------------------
+    # =====================================================
+    # COMPLAINTS MIGRATION
+    # =====================================================
+
+    complaint_columns = [
+        row["name"]
+        for row in conn.execute(
+            "PRAGMA table_info(complaints)"
+        ).fetchall()
+    ]
+
+
+    if "ai_problem" not in complaint_columns:
+
+        conn.execute("""
+            ALTER TABLE complaints
+            ADD COLUMN ai_problem TEXT
+            DEFAULT 'Not Analyzed'
+        """)
+
+
+    if "severity_score" not in complaint_columns:
+
+        conn.execute("""
+            ALTER TABLE complaints
+            ADD COLUMN severity_score INTEGER
+            DEFAULT 0
+        """)
+
+
+    if "priority" not in complaint_columns:
+
+        conn.execute("""
+            ALTER TABLE complaints
+            ADD COLUMN priority TEXT
+            DEFAULT 'Low'
+        """)
+
+
+    # =====================================================
+    # OFFICER MIGRATION
+    # =====================================================
 
     officer_columns = [
         row["name"]
@@ -158,9 +433,9 @@ def init_db():
         """)
 
 
-    # -----------------------------------------------------
+    # =====================================================
     # UPDATE EMPTY CREATED DATE
-    # -----------------------------------------------------
+    # =====================================================
 
     conn.execute("""
         UPDATE officers
@@ -173,9 +448,45 @@ def init_db():
     ))
 
 
+    # =====================================================
+    # UPDATE OLD COMPLAINT AI VALUES
+    # =====================================================
+
+    conn.execute("""
+        UPDATE complaints
+        SET ai_problem = problem_type
+        WHERE ai_problem IS NULL
+        OR ai_problem = ''
+        OR ai_problem = 'Not Analyzed'
+    """)
+
+
+    conn.execute("""
+        UPDATE complaints
+        SET severity_score = 0
+        WHERE severity_score IS NULL
+    """)
+
+
+    conn.execute("""
+        UPDATE complaints
+        SET priority = 'Low'
+        WHERE priority IS NULL
+        OR priority = ''
+    """)
+
+
     conn.commit()
 
     conn.close()
+
+
+# =========================================================
+# IMPORTANT
+# DATABASE MUST INITIALIZE WHEN GUNICORN STARTS
+# =========================================================
+
+init_db()
 
 
 # =========================================================
@@ -264,6 +575,20 @@ def report():
             "description",
             ""
         ).strip()
+
+
+        # -------------------------------------------------
+        # AI ANALYSIS
+        # -------------------------------------------------
+
+        (
+            ai_problem,
+            severity_score,
+            priority
+        ) = analyze_complaint(
+            problem_type,
+            description
+        )
 
 
         # -------------------------------------------------
@@ -362,50 +687,95 @@ def report():
 
         conn = get_db()
 
+
         conn.execute("""
             INSERT INTO complaints (
 
                 complaint_id,
+
                 name,
+
                 mobile,
+
                 email,
+
                 address,
+
                 latitude,
+
                 longitude,
+
                 problem_type,
+
                 description,
+
                 photo,
+
                 video,
+
                 status,
+
                 department,
+
                 branch,
+
                 officer,
-                created_at
+
+                created_at,
+
+                ai_problem,
+
+                severity_score,
+
+                priority
 
             )
 
             VALUES (
+
                 ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+
             )
         """, (
 
             complaint_id,
+
             name,
+
             mobile,
+
             email,
+
             address,
+
             latitude,
+
             longitude,
+
             problem_type,
+
             description,
+
             photo_name,
+
             video_name,
+
             "Submitted",
+
             "Not Assigned",
+
             "Not Assigned",
+
             "Not Assigned",
-            created_at
+
+            created_at,
+
+            ai_problem,
+
+            severity_score,
+
+            priority
 
         ))
 
@@ -415,9 +785,21 @@ def report():
         conn.close()
 
 
+        # -------------------------------------------------
+        # SUCCESS PAGE
+        # -------------------------------------------------
+
         return render_template(
             "success.html",
-            complaint_id=complaint_id
+
+            complaint_id=complaint_id,
+
+            ai_problem=ai_problem,
+
+            severity_score=severity_score,
+
+            priority=priority
+
         )
 
 
@@ -473,8 +855,11 @@ def track():
 
     return render_template(
         "track.html",
+
         complaint=complaint,
+
         error=error
+
     )
 
 
@@ -491,6 +876,33 @@ def uploaded_file(filename):
         app.config["UPLOAD_FOLDER"],
         filename
     )
+
+
+# =========================================================
+# HEALTH CHECK
+# =========================================================
+
+@app.route("/health")
+def health():
+
+    try:
+
+        conn = get_db()
+
+        conn.execute(
+            "SELECT 1"
+        ).fetchone()
+
+        conn.close()
+
+        return "OK", 200
+
+    except Exception as e:
+
+        return (
+            "Database Error: " + str(e),
+            500
+        )
 
 
 # =========================================================
@@ -599,20 +1011,12 @@ def admin_dashboard():
     conn = get_db()
 
 
-    # -----------------------------------------------------
-    # ALL COMPLAINTS
-    # -----------------------------------------------------
-
     complaints = conn.execute("""
         SELECT *
         FROM complaints
         ORDER BY id DESC
     """).fetchall()
 
-
-    # -----------------------------------------------------
-    # ALL OFFICERS
-    # -----------------------------------------------------
 
     officers = conn.execute("""
         SELECT *
@@ -674,6 +1078,38 @@ def admin_dashboard():
     )
 
 
+    # -----------------------------------------------------
+    # AI PRIORITY COUNTS
+    # -----------------------------------------------------
+
+    critical_complaints = sum(
+        1
+        for c in complaints
+        if c["priority"] == "Critical"
+    )
+
+
+    high_priority_complaints = sum(
+        1
+        for c in complaints
+        if c["priority"] == "High"
+    )
+
+
+    medium_priority_complaints = sum(
+        1
+        for c in complaints
+        if c["priority"] == "Medium"
+    )
+
+
+    low_priority_complaints = sum(
+        1
+        for c in complaints
+        if c["priority"] == "Low"
+    )
+
+
     conn.close()
 
 
@@ -696,7 +1132,16 @@ def admin_dashboard():
 
         new_complaints=new_complaints,
 
-        notification_count=notification_count
+        notification_count=notification_count,
+
+        critical_complaints=critical_complaints,
+
+        high_priority_complaints=high_priority_complaints,
+
+        medium_priority_complaints=medium_priority_complaints,
+
+        low_priority_complaints=low_priority_complaints
+
     )
 
 
@@ -810,6 +1255,7 @@ def add_officer():
             )
 
             VALUES (?, ?, ?, ?, ?, ?)
+
         """, (
 
             name,
@@ -979,8 +1425,7 @@ def assign_complaint(complaint_id):
 
 
     # -----------------------------------------------------
-    # IF OFFICER SELECTED
-    # AUTOMATICALLY GET DEPARTMENT AND BRANCH
+    # GET OFFICER DEPARTMENT / BRANCH
     # -----------------------------------------------------
 
     if officer != "Not Assigned":
@@ -1021,6 +1466,7 @@ def assign_complaint(complaint_id):
             status = ?
 
         WHERE id = ?
+
     """, (
 
         department,
@@ -1106,8 +1552,7 @@ def admin_update_complaint(
 
 
     # -----------------------------------------------------
-    # IF OFFICER SELECTED
-    # GET DEPARTMENT AND BRANCH
+    # GET OFFICER DEPARTMENT / BRANCH
     # -----------------------------------------------------
 
     if officer != "Not Assigned":
@@ -1148,6 +1593,7 @@ def admin_update_complaint(
             status = ?
 
         WHERE id = ?
+
     """, (
 
         department,
@@ -1220,6 +1666,7 @@ def admin_update_status(
         SET status = ?
 
         WHERE id = ?
+
     """, (
 
         status,
@@ -1289,8 +1736,10 @@ def officer_login():
                 AND status = 'Active'
 
             """, (
+
                 officer_id,
                 mobile
+
             )).fetchone()
 
 
@@ -1370,7 +1819,7 @@ def officer_dashboard(
 ):
 
     # -----------------------------------------------------
-    # OFFICER LOGIN CHECK
+    # LOGIN CHECK
     # -----------------------------------------------------
 
     if not session.get(
@@ -1385,7 +1834,7 @@ def officer_dashboard(
 
 
     # -----------------------------------------------------
-    # OFFICER ACCESS CHECK
+    # ACCESS CHECK
     # -----------------------------------------------------
 
     if session.get(
@@ -1469,6 +1918,38 @@ def officer_dashboard(
     )
 
 
+    # -----------------------------------------------------
+    # PRIORITY STATISTICS
+    # -----------------------------------------------------
+
+    critical = sum(
+        1
+        for c in complaints
+        if c["priority"] == "Critical"
+    )
+
+
+    high = sum(
+        1
+        for c in complaints
+        if c["priority"] == "High"
+    )
+
+
+    medium = sum(
+        1
+        for c in complaints
+        if c["priority"] == "Medium"
+    )
+
+
+    low = sum(
+        1
+        for c in complaints
+        if c["priority"] == "Low"
+    )
+
+
     conn.close()
 
 
@@ -1490,6 +1971,14 @@ def officer_dashboard(
 
         resolved=resolved,
 
+        critical=critical,
+
+        high=high,
+
+        medium=medium,
+
+        low=low,
+
         success=None
 
     )
@@ -1509,7 +1998,7 @@ def officer_update_complaint(
 ):
 
     # -----------------------------------------------------
-    # OFFICER LOGIN CHECK
+    # LOGIN CHECK
     # -----------------------------------------------------
 
     if not session.get(
@@ -1524,7 +2013,7 @@ def officer_update_complaint(
 
 
     # -----------------------------------------------------
-    # OFFICER ACCESS CHECK
+    # ACCESS CHECK
     # -----------------------------------------------------
 
     if session.get(
@@ -1581,7 +2070,7 @@ def officer_update_complaint(
 
 
     # -----------------------------------------------------
-    # CHECK COMPLAINT BELONGS TO OFFICER
+    # CHECK COMPLAINT
     # -----------------------------------------------------
 
     complaint = conn.execute("""
@@ -1592,8 +2081,10 @@ def officer_update_complaint(
         AND officer = ?
 
     """, (
+
         complaint_id,
         officer["name"]
+
     )).fetchone()
 
 
@@ -1647,8 +2138,8 @@ def officer_update_complaint(
 
 if __name__ == "__main__":
 
-    init_db()
-
     app.run(
+        host="0.0.0.0",
+        port=5000,
         debug=True
     )
