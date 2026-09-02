@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Complaint Submitted</title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            text-align: center;
+            padding: 70px 20px;
+        }
+
+        .box {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 45px 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .icon {
+            font-size: 65px;
+        }
+
+        h1 {
+            color: #16803c;
+        }
+
+        .complaint-id {
+            margin: 25px 0;
+            padding: 18px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            font-size: 24px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        a {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 13px 25px;
+            background: #123c69;
+            color: white;
+            text-decoration: none;
+            border-radius: 7px;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="box">
+
+    <div class="icon">✅</div>
+
+    <h1>Complaint Submitted!</h1>
+
+    <p>
+        Your complaint has been successfully recorded.
+    </p>
+
+    <p>
+        Please save your Complaint ID.
+    </p>
+
+    <div class="complaint-id">
+        {{ complaint_id }}
+    </div>
+
+    <p>
+        You will use this ID to track your complaint.
+    </p>
+
+    <a href="/">
+        🏠 Back to Home
+    </a>
+
+</div>
+
+</body>
+</html>

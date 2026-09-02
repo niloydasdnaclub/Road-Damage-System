@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Manage Complaint - CivicReport</title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f3f6fa;
+        }
+
+        header {
+            background: #123c69;
+            color: white;
+            padding: 18px 35px;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h2 {
+            margin: 0;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            color: white;
+            text-decoration: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+        }
+
+        .dashboard {
+            background: #198754;
+        }
+
+        .logout {
+            background: #dc3545;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: auto;
+            padding: 30px 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-radius: 10px;
+
+            box-shadow:
+                0 3px 12px
+                rgba(0,0,0,.08);
+        }
+
+        h2 {
+            color: #123c69;
+        }
+
+        .complaint-id {
+            color: #dc3545;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .detail {
+            background: #f7f9fb;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        .detail strong {
+            display: block;
+            margin-bottom: 6px;
+            color: #555;
+        }
+
+        .description {
+            background: #f7f9fb;
+            padding: 15px;
+            border-radius: 6px;
+            line-height: 1.6;
+        }
+
+        .location {
+            background: #eef6ff;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        .location a {
+            color: #123c69;
+            font-weight: bold;
+        }
+
+        .media {
+            display: flex;
+            gap: 25px;
+            flex-wrap: wrap;
+        }
+
+        .media img {
+            max-width: 400px;
+            max-height: 300px;
+            border-radius: 8px;
+        }
+
+        .media video {
+            max-width: 500px;
+            max-height: 350px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            font-weight: bold;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+
+            border: 1px solid #ccc;
+            border-radius: 6px;
+
+            font-size: 15px;
+        }
+
+        .update {
+            width: 100%;
+            padding: 14px;
+
+            border: none;
+            border-radius: 6px;
+
+            background: #123c69;
+            color: white;
+
+            font-size: 16px;
+            font-weight: bold;
+
+            cursor: pointer;
+        }
+
+        .update:hover {
+            background: #0d3155;
+        }
+
+        @media(max-width:700px) {
+
+            .details {
+                grid-template-columns: 1fr;
+            }
+
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .media img,
+            .media video {
+                width: 100%;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<header>
+
+    <h2>
+        🚨 CivicReport Admin
+    </h2>
+
+    <div class="buttons">
+
+        <a
+            href="/admin"
+            class="btn dashboard"
+        >
+            Dashboard
+        </a>
+
+        <a
+            href="/admin/logout"
+            class="btn logout"
+        >
+            Logout
+        </a>
+
+    </div>
+
+</header>
+
+
+<div class="container">
+
+
+    <!-- =================================================
+         COMPLAINT INFORMATION
+    ================================================== -->
+
+    <div class="card">
+
+        <h2>
+            📋 Complaint Information
+        </h2>
+
+
+        <p>
+
+            Complaint ID:
+
+            <span class="complaint-id">
+
+                {{ complaint["complaint_id"] }}
+
+            </span>
+
+        </p>
+
+
+        <div class="details">
+
+
+            <div class="detail">
+
+                <strong>
+                    Citizen Name
+                </strong>
+
+                {{ complaint["name"] }}
+
+            </div>
+
+
+            <div class="detail">
+
+                <strong>
+                    Mobile
+                </strong>
+
+                {{ complaint["mobile"] }}
+
+            </div>
+
+
+            <div class="detail">
+
+                <strong>
+                    Email
+                </strong>
+
+                {{ complaint["email"] or "Not Provided" }}
+
+            </div>
+
+
+            <div class="detail">
+
+                <strong>
+                    Problem Type
+                </strong>
+
+                {{ complaint["problem_type"] }}
+
+            </div>
+
+
+            <div class="detail">
+
+                <strong>
+                    Address
+                </strong>
+
+                {{ complaint["address"] }}
+
+            </div>
+
+
+            <div class="detail">
+
+                <strong>
+                    Submitted
+                </strong>
+
+                {{ complaint["created_at"] }}
+
+            </div>
+
+
+        </div>
+
+
+        <br>
+
+
+        <strong>
+            Description
+        </strong>
+
+
+        <div class="description">
+
+            {{ complaint["description"] }}
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         LOCATION
+    ================================================== -->
+
+    <div class="card">
+
+        <h2>
+            📍 Location
+        </h2>
+
+
+        {% if complaint["latitude"]
+              and complaint["longitude"] %}
+
+
+        <div class="location">
+
+            <p>
+
+                <strong>
+                    Latitude:
+                </strong>
+
+                {{ complaint["latitude"] }}
+
+            </p>
+
+
+            <p>
+
+                <strong>
+                    Longitude:
+                </strong>
+
+                {{ complaint["longitude"] }}
+
+            </p>
+
+
+            <a
+                href="https://www.google.com/maps?q={{ complaint['latitude'] }},{{ complaint['longitude'] }}"
+                target="_blank"
+            >
+                🗺️ Open in Google Maps
+            </a>
+
+        </div>
+
+
+        {% else %}
+
+
+        <p>
+            Location not provided.
+        </p>
+
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- =================================================
+         PHOTO / VIDEO
+    ================================================== -->
+
+    <div class="card">
+
+        <h2>
+            📸 Evidence
+        </h2>
+
+
+        <div class="media">
+
+
+            {% if complaint["photo"] %}
+
+            <div>
+
+                <strong>
+                    Photo
+                </strong>
+
+                <br><br>
+
+                <img
+                    src="{{ url_for(
+                        'uploaded_file',
+                        filename=complaint['photo']
+                    ) }}"
+                    alt="Complaint Photo"
+                >
+
+            </div>
+
+            {% endif %}
+
+
+            {% if complaint["video"] %}
+
+            <div>
+
+                <strong>
+                    Video
+                </strong>
+
+                <br><br>
+
+                <video controls>
+
+                    <source
+                        src="{{ url_for(
+                            'uploaded_file',
+                            filename=complaint['video']
+                        ) }}"
+                    >
+
+                    Your browser does not support
+                    video playback.
+
+                </video>
+
+            </div>
+
+            {% endif %}
+
+
+            {% if not complaint["photo"]
+                  and not complaint["video"] %}
+
+            <p>
+                No evidence uploaded.
+            </p>
+
+            {% endif %}
+
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         ASSIGNMENT
+    ================================================== -->
+
+    <div class="card">
+
+        <h2>
+            👮 Assign Complaint
+        </h2>
+
+
+        <form
+            method="POST"
+            action="{{ url_for(
+                'update_complaint',
+                complaint_id=complaint['id']
+            ) }}"
+        >
+
+
+            <!-- DEPARTMENT -->
+
+            <div class="form-group">
+
+                <label>
+                    🏢 Department
+                </label>
+
+
+                <select
+                    id="department"
+                    name="department"
+                    required
+                >
+
+                    <option value="">
+                        Select Department
+                    </option>
+
+                    <option value="Roads & Engineering">
+                        Roads & Engineering
+                    </option>
+
+                    <option value="Electrical">
+                        Electrical
+                    </option>
+
+                    <option value="Drainage">
+                        Drainage
+                    </option>
+
+                    <option value="Water Supply">
+                        Water Supply
+                    </option>
+
+                    <option value="Sanitation">
+                        Sanitation
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- BRANCH -->
+
+            <div class="form-group">
+
+                <label>
+                    🌐 Branch
+                </label>
+
+
+                <select
+                    id="branch"
+                    name="branch"
+                    required
+                >
+
+                    <option value="">
+                        Select Department First
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- OFFICER -->
+
+            <div class="form-group">
+
+                <label>
+                    👮 Responsible Officer
+                </label>
+
+
+                <select
+                    id="officer"
+                    name="officer"
+                    required
+                >
+
+                    <option value="">
+                        Select Branch First
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- STATUS -->
+
+            <div class="form-group">
+
+                <label>
+                    🔄 Status
+                </label>
+
+
+                <select
+                    id="status"
+                    name="status"
+                    required
+                >
+
+                    <option value="Submitted">
+                        Submitted
+                    </option>
+
+                    <option value="Pending">
+                        Pending
+                    </option>
+
+                    <option value="In Progress">
+                        In Progress
+                    </option>
+
+                    <option value="Resolved">
+                        Resolved
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="update"
+            >
+                💾 Save Assignment & Update Status
+            </button>
+
+
+        </form>
+
+    </div>
+
+
+</div>
+
+
+<script>
+
+
+const departmentSelect =
+    document.getElementById(
+        "department"
+    );
+
+
+const branchSelect =
+    document.getElementById(
+        "branch"
+    );
+
+
+const officerSelect =
+    document.getElementById(
+        "officer"
+    );
+
+
+const statusSelect =
+    document.getElementById(
+        "status"
+    );
+
+
+
+/*
+=========================================================
+DEPARTMENT → BRANCH → OFFICER DATA
+=========================================================
+*/
+
+const data = {
+
+
+    "Roads & Engineering": {
+
+        "Central Roads Branch": [
+            "Road Officer Rahman",
+            "Road Officer Das"
+        ],
+
+        "North Roads Branch": [
+            "Road Officer Singh",
+            "Road Officer Sharma"
+        ],
+
+        "South Roads Branch": [
+            "Road Officer Kumar",
+            "Road Officer Roy"
+        ]
+
+    },
+
+
+    "Electrical": {
+
+        "Central Electrical Branch": [
+            "Electrical Officer Das",
+            "Electrical Officer Singh"
+        ],
+
+        "North Electrical Branch": [
+            "Electrical Officer Sharma",
+            "Electrical Officer Kumar"
+        ],
+
+        "South Electrical Branch": [
+            "Electrical Officer Roy",
+            "Electrical Officer Ahmed"
+        ]
+
+    },
+
+
+    "Drainage": {
+
+        "Central Drainage Branch": [
+            "Drainage Officer Das",
+            "Drainage Officer Kumar"
+        ],
+
+        "North Drainage Branch": [
+            "Drainage Officer Singh",
+            "Drainage Officer Roy"
+        ],
+
+        "South Drainage Branch": [
+            "Drainage Officer Sharma",
+            "Drainage Officer Ahmed"
+        ]
+
+    },
+
+
+    "Water Supply": {
+
+        "Central Water Supply Branch": [
+            "Water Officer Das",
+            "Water Officer Kumar"
+        ],
+
+        "North Water Supply Branch": [
+            "Water Officer Singh",
+            "Water Officer Roy"
+        ],
+
+        "South Water Supply Branch": [
+            "Water Officer Sharma",
+            "Water Officer Ahmed"
+        ]
+
+    },
+
+
+    "Sanitation": {
+
+        "Central Sanitation Branch": [
+            "Sanitation Officer Das",
+            "Sanitation Officer Kumar"
+        ],
+
+        "North Sanitation Branch": [
+            "Sanitation Officer Singh",
+            "Sanitation Officer Roy"
+        ],
+
+        "South Sanitation Branch": [
+            "Sanitation Officer Sharma",
+            "Sanitation Officer Ahmed"
+        ]
+
+    }
+
+};
+
+
+
+/*
+=========================================================
+EXISTING DATABASE VALUES
+=========================================================
+*/
+
+const existingDepartment =
+    {{ complaint["department"]|tojson }};
+
+
+const existingBranch =
+    {{ complaint["branch"]|tojson }};
+
+
+const existingOfficer =
+    {{ complaint["officer"]|tojson }};
+
+
+const existingStatus =
+    {{ complaint["status"]|tojson }};
+
+
+
+/*
+=========================================================
+LOAD BRANCHES
+=========================================================
+*/
+
+function loadBranches(
+    selectedBranch = ""
+) {
+
+    branchSelect.innerHTML =
+        '<option value="">Select Branch</option>';
+
+
+    officerSelect.innerHTML =
+        '<option value="">Select Branch First</option>';
+
+
+    const department =
+        departmentSelect.value;
+
+
+    if (!data[department]) {
+        return;
+    }
+
+
+    const branches =
+        data[department];
+
+
+    Object.keys(branches).forEach(
+        function(branch) {
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+
+            option.value =
+                branch;
+
+
+            option.textContent =
+                branch;
+
+
+            if (
+                branch ===
+                selectedBranch
+            ) {
+
+                option.selected =
+                    true;
+
+            }
+
+
+            branchSelect.appendChild(
+                option
+            );
+
+        }
+    );
+
+
+    if (selectedBranch) {
+
+        loadOfficers(
+            existingOfficer
+        );
+
+    }
+
+}
+
+
+
+/*
+=========================================================
+LOAD OFFICERS
+=========================================================
+*/
+
+function loadOfficers(
+    selectedOfficer = ""
+) {
+
+    officerSelect.innerHTML =
+        '<option value="">Select Officer</option>';
+
+
+    const department =
+        departmentSelect.value;
+
+
+    const branch =
+        branchSelect.value;
+
+
+    if (
+        !data[department] ||
+        !branch
+    ) {
+
+        return;
+
+    }
+
+
+    const officers =
+        data[department][branch];
+
+
+    officers.forEach(
+        function(officer) {
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+
+            option.value =
+                officer;
+
+
+            option.textContent =
+                officer;
+
+
+            if (
+                officer ===
+                selectedOfficer
+            ) {
+
+                option.selected =
+                    true;
+
+            }
+
+
+            officerSelect.appendChild(
+                option
+            );
+
+        }
+    );
+
+}
+
+
+
+/*
+=========================================================
+EVENTS
+=========================================================
+*/
+
+departmentSelect.addEventListener(
+    "change",
+    function() {
+
+        loadBranches();
+
+    }
+);
+
+
+branchSelect.addEventListener(
+    "change",
+    function() {
+
+        loadOfficers();
+
+    }
+);
+
+
+
+/*
+=========================================================
+LOAD EXISTING VALUES
+=========================================================
+*/
+
+window.addEventListener(
+    "DOMContentLoaded",
+    function() {
+
+
+        if (
+            existingDepartment &&
+            existingDepartment !==
+            "Not Assigned"
+        ) {
+
+            departmentSelect.value =
+                existingDepartment;
+
+
+            loadBranches(
+                existingBranch
+            );
+
+        }
+
+
+        if (existingStatus) {
+
+            statusSelect.value =
+                existingStatus;
+
+        }
+
+    }
+);
+
+</script>
+
+
+</body>
+
+</html>

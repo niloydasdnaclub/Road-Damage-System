@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Officer Dashboard - CivicReport</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f3f6fa;
+            color: #222;
+        }
+
+        header {
+            background: #123c69;
+            color: white;
+            padding: 18px 30px;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h2 {
+            margin: 0;
+        }
+
+        .back {
+            background: white;
+            color: #123c69;
+            padding: 10px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 1500px;
+            margin: auto;
+            padding: 25px;
+        }
+
+        .welcome {
+            background: white;
+            padding: 28px;
+            border-radius: 12px;
+            margin-bottom: 22px;
+            box-shadow: 0 3px 12px rgba(0,0,0,.08);
+        }
+
+        .welcome h1 {
+            margin-top: 0;
+            color: #123c69;
+        }
+
+        .info {
+            line-height: 1.9;
+            font-size: 16px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 18px;
+            margin-bottom: 25px;
+        }
+
+        .stat {
+            background: white;
+            padding: 22px;
+            border-radius: 10px;
+            box-shadow: 0 3px 12px rgba(0,0,0,.08);
+        }
+
+        .stat h3 {
+            margin: 0 0 10px;
+            color: #666;
+            font-size: 15px;
+        }
+
+        .stat strong {
+            font-size: 32px;
+            color: #123c69;
+        }
+
+        .box {
+            background: white;
+            padding: 22px;
+            border-radius: 12px;
+            box-shadow: 0 3px 12px rgba(0,0,0,.08);
+        }
+
+        .box h2 {
+            color: #123c69;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 1200px;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #123c69;
+            color: white;
+            padding: 13px;
+            text-align: left;
+        }
+
+        td {
+            padding: 13px;
+            border-bottom: 1px solid #ddd;
+            vertical-align: top;
+        }
+
+        .complaint-id {
+            color: #123c69;
+            font-weight: bold;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 20px;
+            background: #eeeeee;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .update-form {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 150px;
+        }
+
+        select {
+            padding: 9px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 9px;
+            border: none;
+            border-radius: 5px;
+            background: #198754;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #146c43;
+        }
+
+        a {
+            color: #0645ad;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 50px;
+            color: #777;
+        }
+
+        .success {
+            background: #d1e7dd;
+            color: #0f5132;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        @media(max-width: 1100px) {
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+        }
+
+        @media(max-width: 600px) {
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 15px;
+            }
+
+            header {
+                padding: 15px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+
+<header>
+
+    <h2>👮 CivicReport Officer Dashboard</h2>
+
+    <a
+        href="{{ url_for('admin_dashboard') }}"
+        class="back">
+
+        ← Admin Dashboard
+
+    </a>
+
+</header>
+
+
+<div class="container">
+
+
+    <!-- OFFICER INFORMATION -->
+
+    <div class="welcome">
+
+        <h1>
+            Welcome, {{ officer["name"] }} 👋
+        </h1>
+
+        <div class="info">
+
+            <strong>Department:</strong>
+            {{ officer["department"] }}
+
+            <br>
+
+            <strong>Branch:</strong>
+            {{ officer["branch"] }}
+
+            <br>
+
+            <strong>Mobile:</strong>
+            {{ officer["mobile"] or "-" }}
+
+            <br>
+
+            <strong>Status:</strong>
+            {{ officer["status"] }}
+
+        </div>
+
+    </div>
+
+
+    {% if success %}
+
+    <div class="success">
+        ✅ {{ success }}
+    </div>
+
+    {% endif %}
+
+
+    <!-- STATISTICS -->
+
+    <div class="stats">
+
+        <div class="stat">
+
+            <h3>Total Assigned</h3>
+
+            <strong>
+                {{ total_assigned }}
+            </strong>
+
+        </div>
+
+
+        <div class="stat">
+
+            <h3>Submitted</h3>
+
+            <strong>
+                {{ submitted }}
+            </strong>
+
+        </div>
+
+
+        <div class="stat">
+
+            <h3>Pending</h3>
+
+            <strong>
+                {{ pending }}
+            </strong>
+
+        </div>
+
+
+        <div class="stat">
+
+            <h3>In Progress</h3>
+
+            <strong>
+                {{ in_progress }}
+            </strong>
+
+        </div>
+
+
+        <div class="stat">
+
+            <h3>Resolved</h3>
+
+            <strong>
+                {{ resolved }}
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <!-- COMPLAINTS -->
+
+    <div class="box">
+
+        <h2>
+            📋 Assigned Complaints
+        </h2>
+
+
+        {% if complaints %}
+
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>Complaint ID</th>
+
+                        <th>Citizen</th>
+
+                        <th>Problem</th>
+
+                        <th>Description</th>
+
+                        <th>Location</th>
+
+                        <th>Evidence</th>
+
+                        <th>Department</th>
+
+                        <th>Branch</th>
+
+                        <th>Status</th>
+
+                        <th>Update</th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+
+                {% for complaint in complaints %}
+
+                <tr>
+
+
+                    <td>
+
+                        <span class="complaint-id">
+
+                            {{ complaint["complaint_id"] }}
+
+                        </span>
+
+                        <br><br>
+
+                        {{ complaint["created_at"] }}
+
+                    </td>
+
+
+                    <td>
+
+                        <strong>
+                            {{ complaint["name"] }}
+                        </strong>
+
+                        <br>
+
+                        📞 {{ complaint["mobile"] }}
+
+                        {% if complaint["email"] %}
+
+                        <br>
+                        ✉️ {{ complaint["email"] }}
+
+                        {% endif %}
+
+                        <br>
+
+                        🏠 {{ complaint["address"] }}
+
+                    </td>
+
+
+                    <td>
+
+                        {{ complaint["problem_type"] }}
+
+                    </td>
+
+
+                    <td>
+
+                        {{ complaint["description"] }}
+
+                    </td>
+
+
+                    <td>
+
+                        {% if complaint["latitude"]
+                              and complaint["longitude"] %}
+
+                        📍
+
+                        {{ complaint["latitude"] }},
+                        {{ complaint["longitude"] }}
+
+                        <br>
+
+                        <a
+                            target="_blank"
+                            href="https://www.google.com/maps?q={{ complaint['latitude'] }},{{ complaint['longitude'] }}">
+
+                            🗺️ Open Map
+
+                        </a>
+
+                        {% else %}
+
+                        Location unavailable
+
+                        {% endif %}
+
+                    </td>
+
+
+                    <td>
+
+                        {% if complaint["photo"] %}
+
+                        <a
+                            target="_blank"
+                            href="{{ url_for('uploaded_file', filename=complaint['photo']) }}">
+
+                            📸 View Photo
+
+                        </a>
+
+                        <br>
+
+                        {% endif %}
+
+
+                        {% if complaint["video"] %}
+
+                        <a
+                            target="_blank"
+                            href="{{ url_for('uploaded_file', filename=complaint['video']) }}">
+
+                            🎥 View Video
+
+                        </a>
+
+                        {% endif %}
+
+
+                        {% if not complaint["photo"]
+                              and not complaint["video"] %}
+
+                        No evidence
+
+                        {% endif %}
+
+                    </td>
+
+
+                    <td>
+
+                        {{ complaint["department"] }}
+
+                    </td>
+
+
+                    <td>
+
+                        {{ complaint["branch"] }}
+
+                    </td>
+
+
+                    <td>
+
+                        <span class="status">
+
+                            {{ complaint["status"] }}
+
+                        </span>
+
+                    </td>
+
+
+                    <td>
+
+                        <form
+                            class="update-form"
+                            method="POST"
+                            action="{{ url_for(
+                                'officer_update_complaint',
+                                officer_id=officer['id'],
+                                complaint_id=complaint['id']
+                            ) }}">
+
+                            <select name="status">
+
+                                <option value="Submitted"
+                                    {% if complaint["status"] == "Submitted" %}
+                                    selected
+                                    {% endif %}>
+                                    Submitted
+                                </option>
+
+                                <option value="Pending"
+                                    {% if complaint["status"] == "Pending" %}
+                                    selected
+                                    {% endif %}>
+                                    Pending
+                                </option>
+
+                                <option value="In Progress"
+                                    {% if complaint["status"] == "In Progress" %}
+                                    selected
+                                    {% endif %}>
+                                    In Progress
+                                </option>
+
+                                <option value="Resolved"
+                                    {% if complaint["status"] == "Resolved" %}
+                                    selected
+                                    {% endif %}>
+                                    Resolved
+                                </option>
+
+                            </select>
+
+                            <button type="submit">
+                                💾 Update
+                            </button>
+
+                        </form>
+
+                    </td>
+
+
+                </tr>
+
+                {% endfor %}
+
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+        {% else %}
+
+        <div class="empty">
+
+            <h2>
+                📭 No Assigned Complaints
+            </h2>
+
+            <p>
+                No complaints have been assigned to this officer yet.
+            </p>
+
+        </div>
+
+        {% endif %}
+
+
+    </div>
+
+
+</div>
+
+
+</body>
+
+</html>
