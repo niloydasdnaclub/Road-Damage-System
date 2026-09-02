@@ -19,7 +19,7 @@ from datetime import datetime
 # APP CONFIGURATION
 # =========================================================
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=".")
 
 app.secret_key = "CHANGE_THIS_TO_A_STRONG_SECRET_KEY"
 
