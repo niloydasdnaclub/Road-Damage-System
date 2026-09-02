@@ -476,6 +476,24 @@ def init_db():
     """)
 
 
+       # AI columns migration for Render
+    columns = [row[1] for row in conn.execute("PRAGMA table_info(complaints)")]
+
+    if "ai_problem" not in columns:
+        conn.execute(
+            "ALTER TABLE complaints ADD COLUMN ai_problem TEXT DEFAULT 'Not Analyzed'"
+        )
+
+    if "severity_score" not in columns:
+        conn.execute(
+            "ALTER TABLE complaints ADD COLUMN severity_score INTEGER DEFAULT 0"
+        )
+
+    if "priority" not in columns:
+        conn.execute(
+            "ALTER TABLE complaints ADD COLUMN priority TEXT DEFAULT 'Low'"
+        )
+
     conn.commit()
 
     conn.close()
