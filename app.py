@@ -23,7 +23,6 @@ app = Flask(__name__, template_folder=".")
 app.secret_key = "CHANGE_THIS_TO_A_STRONG_SECRET_KEY"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 DATABASE = os.path.join(BASE_DIR, "database.db")
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 
@@ -43,11 +42,16 @@ def get_db():
 
 
 def add_column_if_missing(conn, table, column, definition):
-    columns = [row["name"] for row in conn.execute(
-        f"PRAGMA table_info({table})"
-    ).fetchall()]
+
+    columns = [
+        row["name"]
+        for row in conn.execute(
+            f"PRAGMA table_info({table})"
+        ).fetchall()
+    ]
 
     if column not in columns:
+
         conn.execute(
             f"ALTER TABLE {table} ADD COLUMN {column} {definition}"
         )
@@ -57,9 +61,9 @@ def init_db():
 
     conn = get_db()
 
-    # -----------------------------------------------------
-    # Complaints table
-    # -----------------------------------------------------
+    # =====================================================
+    # COMPLAINTS TABLE
+    # =====================================================
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS complaints (
@@ -83,9 +87,9 @@ def init_db():
         )
     """)
 
-    # -----------------------------------------------------
-    # Officers table
-    # -----------------------------------------------------
+    # =====================================================
+    # OFFICERS TABLE
+    # =====================================================
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS officers (
@@ -99,9 +103,9 @@ def init_db():
         )
     """)
 
-    # -----------------------------------------------------
-    # AI columns
-    # -----------------------------------------------------
+    # =====================================================
+    # AI COLUMNS
+    # =====================================================
 
     add_column_if_missing(
         conn,
@@ -124,9 +128,9 @@ def init_db():
         "TEXT DEFAULT 'Low'"
     )
 
-    # -----------------------------------------------------
-    # Officer created_at migration
-    # -----------------------------------------------------
+    # =====================================================
+    # OFFICER CREATED_AT
+    # =====================================================
 
     add_column_if_missing(
         conn,
@@ -139,8 +143,7 @@ def init_db():
     conn.close()
 
 
-# IMPORTANT:
-# This runs when Gunicorn/Render imports app.py.
+# IMPORTANT FOR RENDER/GUNICORN
 init_db()
 
 
@@ -149,11 +152,23 @@ init_db()
 # DESCRIPTION + PHOTO
 # =========================================================
 
-def analyze_complaint(problem_type="", description="", photo=""):
+def analyze_complaint(
+    problem_type="",
+    description="",
+    photo=""
+):
 
-    problem = str(problem_type or "").lower().strip()
-    desc = str(description or "").lower().strip()
-    photo_name = str(photo or "").lower().strip()
+    problem = str(
+        problem_type or ""
+    ).lower().strip()
+
+    desc = str(
+        description or ""
+    ).lower().strip()
+
+    photo_name = str(
+        photo or ""
+    ).lower().strip()
 
     text = problem + " " + desc
 
@@ -161,28 +176,38 @@ def analyze_complaint(problem_type="", description="", photo=""):
 
 
     # =====================================================
-    # 1. EMERGENCY / LIFE THREAT
+    # EMERGENCY WORDS
     # =====================================================
 
     emergency_words = [
-        "current",
-        "live wire",
-        "live electric wire",
-        "wire have current",
-        "wire has current",
+
         "electric shock",
+        "electric shock risk",
         "electrocution",
         "electrocuted",
+
+        "live wire",
+        "live electric wire",
+
+        "wire have current",
+        "wire has current",
+
+        "current",
         "high voltage",
+
         "danger to life",
         "dangerous",
+
         "life threatening",
         "life-threatening",
+
         "immediate danger",
         "emergency",
+
         "fatal",
         "killed",
         "death",
+
         "people dead",
         "person dead",
         "many people dead",
@@ -191,7 +216,8 @@ def analyze_complaint(problem_type="", description="", photo=""):
     ]
 
     emergency_found = any(
-        word in text for word in emergency_words
+        word in text
+        for word in emergency_words
     )
 
     if emergency_found:
@@ -199,65 +225,99 @@ def analyze_complaint(problem_type="", description="", photo=""):
 
 
     # =====================================================
-    # 2. ELECTRICAL INFRASTRUCTURE
+    # ELECTRICAL
     # =====================================================
 
     electrical_words = [
+
         "electric wire",
         "electrical wire",
         "electricity wire",
+
         "power wire",
         "power line",
         "electric line",
+
         "fallen wire",
         "fallen electric wire",
         "fallen power line",
+
         "wire fallen",
         "wire down",
+
         "electric pole",
+        "electricity pole",
         "power pole",
+
         "electric cable",
         "electrical cable",
+        "power cable",
+
         "live wire",
+
         "electric current",
         "current wire",
+
         "high voltage",
+
         "transformer",
-        "electricity pole",
-        "electricity line",
-        "power cable"
+
+        "electricity line"
     ]
 
     electrical_found = any(
-        word in text for word in electrical_words
+        word in text
+        for word in electrical_words
     )
+
+    # Additional electrical detection
+    if (
+        "wire" in text
+        and (
+            "electric" in text
+            or "current" in text
+            or "power" in text
+            or "voltage" in text
+        )
+    ):
+        electrical_found = True
 
     if electrical_found:
         score += 35
 
 
     # =====================================================
-    # 3. CRITICAL INFRASTRUCTURE
+    # CRITICAL INFRASTRUCTURE
     # =====================================================
 
     critical_words = [
+
         "bridge collapse",
         "bridge collapsed",
+
         "road collapse",
         "road collapsed",
+
         "building collapse",
         "building collapsed",
+
         "wall collapse",
         "wall collapsed",
+
         "major accident",
+
         "landslide",
+
         "flooded road",
+
         "road completely broken",
+
         "completely destroyed"
     ]
 
     critical_found = any(
-        word in text for word in critical_words
+        word in text
+        for word in critical_words
     )
 
     if critical_found:
@@ -265,93 +325,116 @@ def analyze_complaint(problem_type="", description="", photo=""):
 
 
     # =====================================================
-    # 4. HIGH SEVERITY WORDS
+    # HIGH SEVERITY
     # =====================================================
 
     high_words = [
+
         "large pothole",
         "big pothole",
         "deep pothole",
         "huge pothole",
+
         "large crack",
         "deep crack",
+
         "broken road",
         "damaged road",
         "road damage",
+
         "danger",
         "unsafe",
+
         "traffic problem",
+
         "waterlogging",
+
         "blocked road",
         "road blocked",
+
         "severe damage",
         "major damage"
     ]
 
     for word in high_words:
+
         if word in text:
             score += 20
 
 
     # =====================================================
-    # 5. MEDIUM SEVERITY WORDS
+    # MEDIUM SEVERITY
     # =====================================================
 
     medium_words = [
+
         "pothole",
         "crack",
         "broken",
         "damaged",
+
         "street light",
         "streetlight",
+
         "drain",
         "drainage",
+
         "garbage",
+
         "water leak",
         "water leakage",
         "leakage",
+
         "footpath",
         "sidewalk"
     ]
 
     for word in medium_words:
+
         if word in text:
             score += 12
 
 
     # =====================================================
-    # 6. LOW SEVERITY WORDS
+    # LOW SEVERITY
     # =====================================================
 
     low_words = [
+
         "small crack",
         "minor",
         "light damage",
         "slight damage",
+
         "dirty",
         "cleaning",
         "maintenance"
     ]
 
     for word in low_words:
+
         if word in text:
             score += 5
 
 
     # =====================================================
-    # 7. PROBLEM TYPE BASE SCORE
+    # PROBLEM TYPE BASE SCORE
     # =====================================================
 
     if "pothole" in problem:
+
         score += 25
 
     elif "road" in problem:
+
         score += 20
 
     elif "bridge" in problem:
+
         score += 30
 
     elif "accident" in problem:
+
         score += 35
 
     elif (
@@ -360,17 +443,23 @@ def analyze_complaint(problem_type="", description="", photo=""):
         or "wire" in problem
         or "power" in problem
     ):
+
         score += 25
 
-    elif "street" in problem and "light" in problem:
+    elif (
+        "street" in problem
+        and "light" in problem
+    ):
+
         score += 10
 
     elif "drain" in problem:
+
         score += 15
 
 
     # =====================================================
-    # 8. FALLEN WIRE EXTRA SCORE
+    # FALLEN WIRE
     # =====================================================
 
     if (
@@ -382,39 +471,53 @@ def analyze_complaint(problem_type="", description="", photo=""):
             or "broken" in text
         )
     ):
+
         score += 25
 
 
     # =====================================================
-    # 9. PUBLIC DANGER
+    # PUBLIC DANGER
     # =====================================================
 
     public_danger_words = [
+
         "many people",
         "people are",
+
         "public",
+
         "children",
+
         "crowd",
+
         "house",
         "houses",
+
         "road",
+
         "people walking",
         "people passing",
+
         "near school",
         "near hospital",
         "near market"
     ]
 
     public_danger_found = any(
-        word in text for word in public_danger_words
+        word in text
+        for word in public_danger_words
     )
 
-    if electrical_found and public_danger_found:
+    if (
+        electrical_found
+        and public_danger_found
+    ):
+
         score += 15
 
 
     # =====================================================
-    # 10. DESCRIPTION LENGTH
+    # DESCRIPTION LENGTH
     # =====================================================
 
     if len(desc) > 100:
@@ -425,84 +528,82 @@ def analyze_complaint(problem_type="", description="", photo=""):
 
 
     # =====================================================
-    # 11. PHOTO ANALYSIS FALLBACK
+    # PHOTO PRESENT
     # =====================================================
-    #
-    # Without a Vision API we cannot inspect actual pixels.
-    # But uploaded photo presence increases confidence slightly.
-    #
-    # Later a Vision AI API can replace this section.
-    #
 
     photo_found = bool(photo_name)
 
     if photo_found:
+
         score += 5
 
 
     # =====================================================
-    # 12. PHOTO FILENAME SIGNALS
+    # PHOTO FILENAME SIGNAL
     # =====================================================
-    #
-    # If filenames contain useful words, use them as an
-    # additional signal.
-    #
 
     photo_signal_words = {
 
         "fire": 20,
+
         "accident": 25,
+
         "collapse": 25,
+
         "collapsed": 25,
 
         "pothole": 15,
+
         "road_damage": 15,
+
         "roaddamage": 15,
 
         "broken_road": 20,
+
         "bridge": 25,
 
         "electric": 20,
+
         "electrical": 20,
+
         "wire": 20,
+
         "livewire": 30,
+
         "powerline": 25,
 
         "flood": 20,
+
         "waterlogging": 15,
 
         "garbage": 10,
+
         "drain": 10,
 
         "streetlight": 10,
+
         "street_light": 10
     }
 
     for word, points in photo_signal_words.items():
 
         if word in photo_name:
+
             score += points
 
 
     # =====================================================
-    # 13. MAX SCORE
+    # LIMIT SCORE
     # =====================================================
 
     score = min(score, 100)
 
 
     # =====================================================
-    # 14. AI PROBLEM CLASSIFICATION
+    # AI CLASSIFICATION
     # =====================================================
-    #
-    # IMPORTANT:
-    # Electrical is checked BEFORE road.
-    # This prevents:
-    #
-    # "electric wire fallen on road"
-    #
-    # from becoming Road Damage.
-    #
+
+    # Electrical MUST come before road.
 
     if electrical_found:
 
@@ -517,7 +618,6 @@ def analyze_complaint(problem_type="", description="", photo=""):
         or "road damage" in text
         or "damaged road" in text
         or "broken road" in text
-        or "road damage" in problem
         or "crack" in text
     ):
 
@@ -564,20 +664,26 @@ def analyze_complaint(problem_type="", description="", photo=""):
 
 
     # =====================================================
-    # 15. CRITICAL EMERGENCY OVERRIDE
+    # CRITICAL OVERRIDE
     # =====================================================
 
-    if electrical_found and emergency_found:
+    if (
+        electrical_found
+        and emergency_found
+    ):
 
         score = max(score, 95)
 
-    elif critical_found and emergency_found:
+    elif (
+        critical_found
+        and emergency_found
+    ):
 
         score = max(score, 95)
 
 
     # =====================================================
-    # 16. PRIORITY
+    # PRIORITY
     # =====================================================
 
     if score >= 80:
@@ -597,18 +703,28 @@ def analyze_complaint(problem_type="", description="", photo=""):
         priority = "Low"
 
 
-    # Extra emergency protection
+    # Emergency protection
 
-    if electrical_found and emergency_found:
+    if (
+        electrical_found
+        and emergency_found
+    ):
 
         priority = "Critical"
 
-    elif critical_found and emergency_found:
+    elif (
+        critical_found
+        and emergency_found
+    ):
 
         priority = "Critical"
 
 
-    return ai_problem, score, priority
+    return (
+        ai_problem,
+        score,
+        priority
+    )
 
 
 # =========================================================
@@ -617,52 +733,104 @@ def analyze_complaint(problem_type="", description="", photo=""):
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+
+    return render_template(
+        "index.html"
+    )
 
 
 # =========================================================
-# REPORT COMPLAINT
+# REPORT
 # =========================================================
 
-@app.route("/report", methods=["GET", "POST"])
+@app.route(
+    "/report",
+    methods=["GET", "POST"]
+)
 def report():
 
     if request.method == "GET":
-        return render_template("report.html")
 
-    name = request.form.get("name", "")
-    mobile = request.form.get("mobile", "")
-    email = request.form.get("email", "")
-    address = request.form.get("address", "")
+        return render_template(
+            "report.html"
+        )
 
-    latitude = request.form.get("latitude", "")
-    longitude = request.form.get("longitude", "")
 
-    problem_type = request.form.get("problem_type", "")
-    description = request.form.get("description", "")
+    # =====================================================
+    # FORM DATA
+    # =====================================================
+
+    name = request.form.get(
+        "name",
+        ""
+    )
+
+    mobile = request.form.get(
+        "mobile",
+        ""
+    )
+
+    email = request.form.get(
+        "email",
+        ""
+    )
+
+    address = request.form.get(
+        "address",
+        ""
+    )
+
+    latitude = request.form.get(
+        "latitude",
+        ""
+    )
+
+    longitude = request.form.get(
+        "longitude",
+        ""
+    )
+
+    problem_type = request.form.get(
+        "problem_type",
+        ""
+    )
+
+    description = request.form.get(
+        "description",
+        ""
+    )
 
 
     # =====================================================
     # COMPLAINT ID
     # =====================================================
 
-    complaint_id = "CR-" + uuid.uuid4().hex[:8].upper()
+    complaint_id = (
+        "CIVIC-"
+        + datetime.now().strftime("%Y")
+        + "-"
+        + uuid.uuid4().hex[:6].upper()
+    )
 
 
     # =====================================================
-    # PHOTO UPLOAD
+    # PHOTO
     # =====================================================
 
-    photo_file = request.files.get("photo")
+    photo_file = request.files.get(
+        "photo"
+    )
 
     photo_filename = ""
 
-    if photo_file and photo_file.filename:
 
-        original_name = photo_file.filename
+    if (
+        photo_file
+        and photo_file.filename
+    ):
 
         extension = os.path.splitext(
-            original_name
+            photo_file.filename
         )[1].lower()
 
         photo_filename = (
@@ -680,19 +848,23 @@ def report():
 
 
     # =====================================================
-    # VIDEO UPLOAD
+    # VIDEO
     # =====================================================
 
-    video_file = request.files.get("video")
+    video_file = request.files.get(
+        "video"
+    )
 
     video_filename = ""
 
-    if video_file and video_file.filename:
 
-        original_name = video_file.filename
+    if (
+        video_file
+        and video_file.filename
+    ):
 
         extension = os.path.splitext(
-            original_name
+            video_file.filename
         )[1].lower()
 
         video_filename = (
@@ -710,8 +882,7 @@ def report():
 
 
     # =====================================================
-    # AI ANALYSIS
-    # DESCRIPTION + PHOTO
+    # AI
     # =====================================================
 
     (
@@ -729,11 +900,14 @@ def report():
     # DEPARTMENT ROUTING
     # =====================================================
 
-    department = "Not Assigned"
-
     lower_problem = (
-        problem_type + " " + description
+        problem_type
+        + " "
+        + description
     ).lower()
+
+
+    department = "Not Assigned"
 
 
     if (
@@ -742,6 +916,7 @@ def report():
         or "wire" in lower_problem
         or "power" in lower_problem
         or "street light" in lower_problem
+        or "streetlight" in lower_problem
     ):
 
         department = "Electrical"
@@ -776,6 +951,7 @@ def report():
 
     conn = get_db()
 
+
     conn.execute("""
         INSERT INTO complaints (
             complaint_id,
@@ -798,53 +974,82 @@ def report():
             severity_score,
             priority
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        )
     """, (
+
         complaint_id,
+
         name,
+
         mobile,
+
         email,
+
         address,
+
         latitude,
+
         longitude,
+
         problem_type,
+
         description,
+
         photo_filename,
+
         video_filename,
+
         "Submitted",
+
         department,
+
         "Not Assigned",
+
         "Not Assigned",
+
         datetime.now().strftime(
             "%Y-%m-%d %H:%M:%S"
         ),
+
         ai_problem,
+
         severity_score,
+
         priority
     ))
+
 
     conn.commit()
     conn.close()
 
 
     # =====================================================
-    # SUCCESS PAGE
+    # SUCCESS
     # =====================================================
 
     return render_template(
         "success.html",
+
         complaint_id=complaint_id,
+
         ai_problem=ai_problem,
+
         severity_score=severity_score,
+
         priority=priority
     )
 
 
 # =========================================================
-# SERVE UPLOADED FILES
+# UPLOADS
 # =========================================================
 
-@app.route("/uploads/<filename>")
+@app.route(
+    "/uploads/<filename>"
+)
 def uploaded_file(filename):
 
     return send_from_directory(
@@ -857,10 +1062,14 @@ def uploaded_file(filename):
 # PUBLIC TRACKING
 # =========================================================
 
-@app.route("/track", methods=["GET", "POST"])
+@app.route(
+    "/track",
+    methods=["GET", "POST"]
+)
 def track():
 
     complaint = None
+
 
     if request.method == "POST":
 
@@ -869,13 +1078,18 @@ def track():
             ""
         ).strip()
 
+
         conn = get_db()
+
 
         complaint = conn.execute("""
             SELECT *
             FROM complaints
             WHERE complaint_id = ?
-        """, (complaint_id,)).fetchone()
+        """, (
+            complaint_id,
+        )).fetchone()
+
 
         conn.close()
 
@@ -890,7 +1104,10 @@ def track():
 # ADMIN LOGIN
 # =========================================================
 
-@app.route("/admin/login", methods=["GET", "POST"])
+@app.route(
+    "/admin/login",
+    methods=["GET", "POST"]
+)
 def admin_login():
 
     if request.method == "POST":
@@ -905,7 +1122,7 @@ def admin_login():
             ""
         )
 
-        # Change these credentials
+
         if (
             username == "admin"
             and password == "admin123"
@@ -914,8 +1131,11 @@ def admin_login():
             session["admin_logged_in"] = True
 
             return redirect(
-                url_for("admin_dashboard")
+                url_for(
+                    "admin_dashboard"
+                )
             )
+
 
         return render_template(
             "admin_login.html",
@@ -932,7 +1152,9 @@ def admin_login():
 # ADMIN LOGOUT
 # =========================================================
 
-@app.route("/admin/logout")
+@app.route(
+    "/admin/logout"
+)
 def admin_logout():
 
     session.pop(
@@ -952,7 +1174,9 @@ def admin_logout():
 @app.route("/admin")
 def admin_dashboard():
 
-    if not session.get("admin_logged_in"):
+    if not session.get(
+        "admin_logged_in"
+    ):
 
         return redirect(
             url_for("admin_login")
@@ -1043,16 +1267,27 @@ def admin_dashboard():
 
     return render_template(
         "admin_dashboard.html",
+
         complaints=complaints,
+
         officers=officers,
+
         total=total,
+
         submitted=submitted,
+
         pending=pending,
+
         in_progress=in_progress,
+
         resolved=resolved,
+
         critical=critical,
+
         high=high,
+
         medium=medium,
+
         low=low
     )
 
@@ -1061,10 +1296,15 @@ def admin_dashboard():
 # ADD OFFICER
 # =========================================================
 
-@app.route("/admin/officer/add", methods=["POST"])
+@app.route(
+    "/admin/officer/add",
+    methods=["POST"]
+)
 def add_officer():
 
-    if not session.get("admin_logged_in"):
+    if not session.get(
+        "admin_logged_in"
+    ):
 
         return redirect(
             url_for("admin_login")
@@ -1094,6 +1334,7 @@ def add_officer():
 
     conn = get_db()
 
+
     conn.execute("""
         INSERT INTO officers (
             name,
@@ -1105,22 +1346,31 @@ def add_officer():
         )
         VALUES (?, ?, ?, ?, ?, ?)
     """, (
+
         name,
+
         department,
+
         branch,
+
         mobile,
+
         "Active",
+
         datetime.now().strftime(
             "%Y-%m-%d %H:%M:%S"
         )
     ))
+
 
     conn.commit()
     conn.close()
 
 
     return redirect(
-        url_for("admin_dashboard")
+        url_for(
+            "admin_dashboard"
+        )
     )
 
 
@@ -1132,9 +1382,13 @@ def add_officer():
     "/admin/officer/<int:officer_id>/delete",
     methods=["POST"]
 )
-def delete_officer(officer_id):
+def delete_officer(
+    officer_id
+):
 
-    if not session.get("admin_logged_in"):
+    if not session.get(
+        "admin_logged_in"
+    ):
 
         return redirect(
             url_for("admin_login")
@@ -1143,17 +1397,23 @@ def delete_officer(officer_id):
 
     conn = get_db()
 
+
     conn.execute("""
         DELETE FROM officers
         WHERE id = ?
-    """, (officer_id,))
+    """, (
+        officer_id,
+    ))
+
 
     conn.commit()
     conn.close()
 
 
     return redirect(
-        url_for("admin_dashboard")
+        url_for(
+            "admin_dashboard"
+        )
     )
 
 
@@ -1165,9 +1425,13 @@ def delete_officer(officer_id):
     "/admin/complaint/<int:complaint_id>/assign",
     methods=["POST"]
 )
-def assign_complaint(complaint_id):
+def assign_complaint(
+    complaint_id
+):
 
-    if not session.get("admin_logged_in"):
+    if not session.get(
+        "admin_logged_in"
+    ):
 
         return redirect(
             url_for("admin_login")
@@ -1192,6 +1456,7 @@ def assign_complaint(complaint_id):
 
     conn = get_db()
 
+
     conn.execute("""
         UPDATE complaints
         SET
@@ -1201,18 +1466,25 @@ def assign_complaint(complaint_id):
             status = 'Assigned'
         WHERE id = ?
     """, (
+
         department,
+
         branch,
+
         officer,
+
         complaint_id
     ))
+
 
     conn.commit()
     conn.close()
 
 
     return redirect(
-        url_for("admin_dashboard")
+        url_for(
+            "admin_dashboard"
+        )
     )
 
 
@@ -1228,7 +1500,9 @@ def admin_update_complaint(
     complaint_id
 ):
 
-    if not session.get("admin_logged_in"):
+    if not session.get(
+        "admin_logged_in"
+    ):
 
         return redirect(
             url_for("admin_login")
@@ -1243,21 +1517,118 @@ def admin_update_complaint(
 
     conn = get_db()
 
+
     conn.execute("""
         UPDATE complaints
         SET status = ?
         WHERE id = ?
     """, (
+
         status,
+
         complaint_id
     ))
+
 
     conn.commit()
     conn.close()
 
 
     return redirect(
-        url_for("admin_dashboard")
+        url_for(
+            "admin_dashboard"
+        )
+    )
+
+
+# =========================================================
+# OFFICER LOGIN
+# =========================================================
+
+@app.route(
+    "/officer/login",
+    methods=["GET", "POST"]
+)
+def officer_login():
+
+    if request.method == "POST":
+
+        name = request.form.get(
+            "name",
+            ""
+        ).strip()
+
+        mobile = request.form.get(
+            "mobile",
+            ""
+        ).strip()
+
+
+        conn = get_db()
+
+
+        officer = conn.execute("""
+            SELECT *
+            FROM officers
+            WHERE name = ?
+            AND mobile = ?
+        """, (
+            name,
+            mobile
+        )).fetchone()
+
+
+        conn.close()
+
+
+        if officer:
+
+            session["officer_logged_in"] = True
+
+            session["officer_id"] = officer["id"]
+
+            return redirect(
+                url_for(
+                    "officer_dashboard",
+                    officer_id=officer["id"]
+                )
+            )
+
+
+        return render_template(
+            "officer_login.html",
+            error="Invalid officer name or mobile number"
+        )
+
+
+    return render_template(
+        "officer_login.html"
+    )
+
+
+# =========================================================
+# OFFICER LOGOUT
+# =========================================================
+
+@app.route(
+    "/officer/logout"
+)
+def officer_logout():
+
+    session.pop(
+        "officer_logged_in",
+        None
+    )
+
+    session.pop(
+        "officer_id",
+        None
+    )
+
+    return redirect(
+        url_for(
+            "officer_login"
+        )
     )
 
 
@@ -1268,7 +1639,27 @@ def admin_update_complaint(
 @app.route(
     "/officer/<int:officer_id>"
 )
-def officer_dashboard(officer_id):
+def officer_dashboard(
+    officer_id
+):
+
+    # Officer login protection
+
+    if (
+        not session.get(
+            "officer_logged_in"
+        )
+        or session.get(
+            "officer_id"
+        ) != officer_id
+    ):
+
+        return redirect(
+            url_for(
+                "officer_login"
+            )
+        )
+
 
     conn = get_db()
 
@@ -1277,7 +1668,9 @@ def officer_dashboard(officer_id):
         SELECT *
         FROM officers
         WHERE id = ?
-    """, (officer_id,)).fetchone()
+    """, (
+        officer_id,
+    )).fetchone()
 
 
     if not officer:
@@ -1297,25 +1690,35 @@ def officer_dashboard(officer_id):
     )).fetchall()
 
 
-    total = len(complaints)
+    total = len(
+        complaints
+    )
+
 
     submitted = sum(
-        1 for c in complaints
+        1
+        for c in complaints
         if c["status"] == "Submitted"
     )
 
+
     pending = sum(
-        1 for c in complaints
+        1
+        for c in complaints
         if c["status"] == "Pending"
     )
 
+
     in_progress = sum(
-        1 for c in complaints
+        1
+        for c in complaints
         if c["status"] == "In Progress"
     )
 
+
     resolved = sum(
-        1 for c in complaints
+        1
+        for c in complaints
         if c["status"] == "Resolved"
     )
 
@@ -1325,12 +1728,19 @@ def officer_dashboard(officer_id):
 
     return render_template(
         "officer_dashboard.html",
+
         officer=officer,
+
         complaints=complaints,
+
         total=total,
+
         submitted=submitted,
+
         pending=pending,
+
         in_progress=in_progress,
+
         resolved=resolved
     )
 
@@ -1348,6 +1758,22 @@ def officer_update_complaint(
     complaint_id
 ):
 
+    if (
+        not session.get(
+            "officer_logged_in"
+        )
+        or session.get(
+            "officer_id"
+        ) != officer_id
+    ):
+
+        return redirect(
+            url_for(
+                "officer_login"
+            )
+        )
+
+
     status = request.form.get(
         "status",
         "Submitted"
@@ -1361,7 +1787,9 @@ def officer_update_complaint(
         SELECT *
         FROM officers
         WHERE id = ?
-    """, (officer_id,)).fetchone()
+    """, (
+        officer_id,
+    )).fetchone()
 
 
     if not officer:
@@ -1377,8 +1805,11 @@ def officer_update_complaint(
         WHERE id = ?
         AND officer = ?
     """, (
+
         status,
+
         complaint_id,
+
         officer["name"]
     ))
 
@@ -1417,13 +1848,14 @@ def health():
     except Exception as e:
 
         return (
-            "Database Error: " + str(e),
+            "Database Error: "
+            + str(e),
             500
         )
 
 
 # =========================================================
-# RUN LOCAL SERVER
+# RUN
 # =========================================================
 
 if __name__ == "__main__":
