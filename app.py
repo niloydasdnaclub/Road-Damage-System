@@ -1003,37 +1003,96 @@ def admin_login():
             ""
         ).strip()
 
+# ============================================================
+# ADMIN LOGIN
+# ============================================================
+
+@app.route(
+    "/admin/login",
+    methods=["GET", "POST"]
+)
+def admin_login():
+
+    if admin_required():
+
+        return redirect(
+            url_for("admin_dashboard")
+        )
+
+    if request.method == "POST":
+
         # ----------------------------------------------------
-        # ADMIN LOGIN
+        # LOGIN FORM
         # ----------------------------------------------------
 
-        admin_username = os.environ.get(
-            "ADMIN_USERNAME",
-            "admin"
-        )
+        email = request.form.get(
+            "email",
+            ""
+        ).strip().lower()
+
+        password = request.form.get(
+            "password",
+            ""
+        ).strip()
+
+        access_key = request.form.get(
+            "access_key",
+            ""
+        ).strip()
+
+        # ----------------------------------------------------
+        # ADMIN CREDENTIALS
+        #
+        # Render Environment Variables:
+        #
+        # ADMIN_EMAIL
+        # ADMIN_PASSWORD
+        # ADMIN_ACCESS_KEY
+        # ----------------------------------------------------
+
+        admin_email = os.environ.get(
+            "ADMIN_EMAIL",
+            "admin@civicreport.com"
+        ).strip().lower()
 
         admin_password = os.environ.get(
             "ADMIN_PASSWORD",
             "admin123"
-        )
+        ).strip()
+
+        admin_access_key = os.environ.get(
+            "ADMIN_ACCESS_KEY",
+            "ADM-2030"
+        ).strip()
+
+        # ----------------------------------------------------
+        # CHECK LOGIN
+        # ----------------------------------------------------
 
         if (
-            username == admin_username
+            email == admin_email
             and
             password == admin_password
+            and
+            access_key == admin_access_key
         ):
 
             session.clear()
 
             session["admin_logged_in"] = True
-            session["admin_username"] = username
+            session["admin_email"] = email
+            session["admin_role"] = "Admin"
 
             return redirect(
                 url_for("admin_dashboard")
             )
 
+        # ----------------------------------------------------
+        # INVALID LOGIN
+        # ----------------------------------------------------
+
         flash(
-            "Invalid username or password.",
+            "Invalid admin credentials.",
             "error"
         )
 

@@ -1,124 +1,398 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Admin Login - CivicReport</title>
+    <title>Admin Access - RoadWatch</title>
 
     <style>
         * {
             box-sizing: border-box;
-            font-family: Arial, sans-serif;
         }
 
         body {
             margin: 0;
             min-height: 100vh;
+            font-family: Arial, Helvetica, sans-serif;
+            background: linear-gradient(135deg, #0f172a, #1e3a8a);
+
             display: flex;
-            justify-content: center;
             align-items: center;
-            background: #f4f7fb;
+            justify-content: center;
+
+            padding: 20px;
         }
 
-        .login-box {
-            width: 380px;
+        .login-card {
+            width: 100%;
+            max-width: 460px;
+
             background: white;
+
+            border-radius: 22px;
+
             padding: 35px;
-            border-radius: 15px;
-            box-shadow: 0 5px 25px rgba(0,0,0,0.12);
+
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.30);
         }
 
-        h1 {
+        .version {
             text-align: center;
-            color: #123c69;
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 5px;
         }
 
-        p {
+        .brand {
             text-align: center;
-            color: #666;
+            font-size: 30px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 28px;
+        }
+
+        .admin-icon {
+            width: 75px;
+            height: 75px;
+
+            margin: 0 auto 18px;
+
+            border-radius: 50%;
+
+            background: #eff6ff;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 38px;
+        }
+
+        .title {
+            text-align: center;
+
+            font-size: 23px;
+
+            font-weight: 700;
+
+            color: #172554;
+
+            margin-bottom: 5px;
+        }
+
+        .secure {
+            text-align: center;
+
+            font-family: monospace;
+
+            color: #64748b;
+
+            font-size: 13px;
+
+            margin-bottom: 25px;
+        }
+
+        .error {
+            background: #fef2f2;
+
+            color: #b91c1c;
+
+            border: 1px solid #fecaca;
+
+            padding: 12px;
+
+            border-radius: 9px;
+
+            margin-bottom: 18px;
+
+            text-align: center;
+
+            font-weight: 600;
         }
 
         label {
             display: block;
-            margin-top: 20px;
+
+            font-weight: 600;
+
+            color: #334155;
+
             margin-bottom: 7px;
-            font-weight: bold;
+        }
+
+        .input-group {
+            position: relative;
+
+            margin-bottom: 18px;
+        }
+
+        .input-icon {
+            position: absolute;
+
+            left: 14px;
+
+            top: 50%;
+
+            transform: translateY(-50%);
+
+            font-size: 19px;
         }
 
         input {
             width: 100%;
-            padding: 13px;
-            border: 1px solid #ccc;
-            border-radius: 7px;
+
+            padding: 14px 14px 14px 45px;
+
+            border: 1px solid #cbd5e1;
+
+            border-radius: 10px;
+
+            outline: none;
+
             font-size: 15px;
+        }
+
+        input:focus {
+            border-color: #2563eb;
+
+            box-shadow:
+                0 0 0 3px
+                rgba(37, 99, 235, 0.12);
+        }
+
+        .key-box {
+            background: #eff6ff;
+
+            border: 1px solid #bfdbfe;
+
+            border-radius: 10px;
+
+            padding: 11px 14px;
+
+            margin-bottom: 12px;
+
+            color: #1e40af;
+
+            font-size: 13px;
+
+            text-align: center;
         }
 
         button {
             width: 100%;
-            margin-top: 25px;
-            padding: 14px;
+
             border: none;
-            border-radius: 7px;
-            background: #123c69;
+
+            border-radius: 10px;
+
+            padding: 15px;
+
+            background: linear-gradient(
+                135deg,
+                #2563eb,
+                #1d4ed8
+            );
+
             color: white;
+
             font-size: 16px;
-            font-weight: bold;
+
+            font-weight: 700;
+
             cursor: pointer;
+
+            margin-top: 5px;
         }
 
-        .error {
-            margin-top: 15px;
-            padding: 12px;
-            background: #ffe5e5;
-            color: #b00020;
-            border-radius: 7px;
+        button:hover {
+            opacity: 0.93;
+        }
+
+        .back {
+            display: block;
+
             text-align: center;
+
+            margin-top: 18px;
+
+            color: #2563eb;
+
+            text-decoration: none;
+
+            font-weight: 600;
+        }
+
+        .footer {
+            text-align: center;
+
+            margin-top: 22px;
+
+            color: #64748b;
+
+            font-size: 12px;
         }
     </style>
+
 </head>
 
 <body>
 
-<div class="login-box">
+<div class="login-card">
 
-    <h1>🔐 Admin Login</h1>
+    <div class="version">
+        v2.0.0
+    </div>
 
-    <p>CivicReport Administration</p>
+    <div class="brand">
+        🛣 RoadWatch
+    </div>
 
-    {% if error %}
-        <div class="error">
-            ❌ {{ error }}
+    <div class="subtitle">
+        Select your role to continue
+    </div>
+
+    <div class="admin-icon">
+        🛡️
+    </div>
+
+    <div class="title">
+        Admin Access
+    </div>
+
+    <div class="secure">
+        // admin_console.secure
+    </div>
+
+
+    <!-- ERROR MESSAGE -->
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+
+        {% if messages %}
+
+            {% for category, message in messages %}
+
+                <div class="error">
+                    ⚠ {{ message }}
+                </div>
+
+            {% endfor %}
+
+        {% endif %}
+
+    {% endwith %}
+
+
+    <!-- ADMIN LOGIN FORM -->
+
+    <form
+        method="POST"
+        action="{{ url_for('admin_login') }}"
+    >
+
+        <!-- EMAIL -->
+
+        <label>
+            Email Address
+        </label>
+
+        <div class="input-group">
+
+            <span class="input-icon">
+                ✉️
+            </span>
+
+            <input
+                type="email"
+                name="email"
+                placeholder="Enter admin email"
+                autocomplete="username"
+                required
+            >
+
         </div>
-    {% endif %}
 
-    <form method="POST">
 
-        <label>Username</label>
+        <!-- PASSWORD -->
 
-        <input
-            type="text"
-            name="username"
-            placeholder="Enter username"
-            required
-        >
+        <label>
+            Password
+        </label>
 
-        <label>Password</label>
+        <div class="input-group">
 
-        <input
-            type="password"
-            name="password"
-            placeholder="Enter password"
-            required
-        >
+            <span class="input-icon">
+                🔑
+            </span>
+
+            <input
+                type="password"
+                name="password"
+                placeholder="Enter password"
+                autocomplete="current-password"
+                required
+            >
+
+        </div>
+
+
+        <!-- ACCESS KEY -->
+
+        <label>
+            Access Key
+        </label>
+
+        <div class="input-group">
+
+            <span class="input-icon">
+                🛡️
+            </span>
+
+            <input
+                type="text"
+                name="access_key"
+                placeholder="Enter access key"
+                autocomplete="off"
+                required
+            >
+
+        </div>
+
+
+        <div class="key-box">
+            🔐 Key: <strong>ADM-2030</strong>
+        </div>
+
 
         <button type="submit">
-            🔐 Login
+            Enter Admin Panel
         </button>
 
     </form>
 
+
+    <a
+        href="{{ url_for('home') }}"
+        class="back"
+    >
+        ← Back to RoadWatch
+    </a>
+
+
+    <div class="footer">
+        AI-powered road damage detection active
+    </div>
+
 </div>
 
 </body>
+
 </html>
